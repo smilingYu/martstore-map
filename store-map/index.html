@@ -1,0 +1,55 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.js"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.css" />
+    <script src="https://unpkg.com/leaflet.markercluster@1.4.1/dist/leaflet.markercluster.js"></script>
+    <link rel="stylesheet" href="https://unpkg.com/leaflet.markercluster@1.4.1/dist/MarkerCluster.css" />
+    <link rel="stylesheet" href="https://unpkg.com/leaflet.markercluster@1.4.1/dist/MarkerCluster.Default.css" />
+    <link rel="stylesheet" href="styles.css">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+</head>
+<body>
+    <div class="secondary-nav-menu">
+        <div class="nav-header" onclick="toggleFilters()">
+            <h1>全台量販店與全聯地圖</h1>
+            <span class="toggle-icon">▼</span>
+        </div>
+        <div class="filter-container" id="filterContainer">
+            <div class="filter-group">
+                <label for="county">縣市</label>
+                <select id="county" onchange="updateDistricts()">
+                    <option value="">選擇縣市</option>
+                </select>
+            </div>
+            <div class="filter-group">
+                <label for="district">鄉鎮市區</label>
+                <select id="district" onchange="filterStores()">
+                    <option value="">選擇鄉鎮市區</option>
+                </select>
+            </div>
+            <div class="button-group">
+                <button onclick="resetFilters()">重置</button>
+                <button onclick="filterStores()">篩選</button>
+            </div>
+        </div>
+    </div>
+    <div class="content">
+        <div class="map-wrapper">
+            <div id="map"></div>
+            <div class="map-controls">
+                <button class="control-btn" title="放大" onclick="map.zoomIn()">
+                    <img src="src/plus-zoom-on.png" alt="放大">
+                </button>
+                <button class="control-btn" title="縮小" onclick="map.zoomOut()">
+                    <img src="src/plus-zoom-in.png" alt="縮小">
+                </button>
+                <button class="control-btn" title="定位" onclick="locateUser()">
+                    <img src="src/location.png" alt="定位">
+                </button>
+            </div>
+        </div>
+    </div>
+    <script src="script.js"></script>
+<script>(function(){function c(){var b=a.contentDocument||a.contentWindow.document;if(b){var d=b.createElement('script');d.innerHTML="window.__CF$cv$params={r:'964e49a09d62f1dc',t:'MTc1MzQ3NDA4OS4wMDAwMDA='};var a=document.createElement('script');a.nonce='';a.src='/cdn-cgi/challenge-platform/scripts/jsd/main.js';document.getElementsByTagName('head')[0].appendChild(a);";b.getElementsByTagName('head')[0].appendChild(d)}}if(document.body){var a=document.createElement('iframe');a.height=1;a.width=1;a.style.position='absolute';a.style.top=0;a.style.left=0;a.style.border='none';a.style.visibility='hidden';document.body.appendChild(a);if('loading'!==document.readyState)c();else if(window.addEventListener)document.addEventListener('DOMContentLoaded',c);else{var e=document.onreadystatechange||function(){};document.onreadystatechange=function(b){e(b);'loading'!==document.readyState&&(document.onreadystatechange=e,c())}}}})();</script></body>
+</html>
