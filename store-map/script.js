@@ -1,85 +1,61 @@
 let map;
 let markers = L.markerClusterGroup();
-let circles = [];
+let locateControl;
 let stores = [];
 
 function initMap() {
-    if (navigator.geolocation) {
-        navigator.geolocation.getCurrentPosition(
-            position => {
-                const lat = position.coords.latitude;
-                const lng = position.coords.longitude;
-                map = L.map('map', {
-                    zoomControl: false,
-                    maxBoundsViscosity: 1.0
-                }).setView([lat, lng], 13);
-                L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
-                    attribution: '© <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
-                }).addTo(map);
-                map.setMaxBounds([[20, 118], [26, 124]]);
-                map.addLayer(markers);
+    map = L.map('map', {
+        zoomControl: false,
+        maxBoundsViscosity: 1.0
+    }).setView([23.5, 121], 8);
+    L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+        attribution: '© <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
+    }).addTo(map);
+    map.setMaxBounds([[20, 118], [26, 124]]);
+    map.addLayer(markers);
 
-                // 清理舊的圓形
-                circles.forEach(circle => map.removeLayer(circle));
-                circles = [];
+    // 初始化 leaflet-locatecontrol
+    locateControl = L.control.locate({
+        position: 'topright',
+        drawCircle: true,
+        drawMarker: true,
+        setView: 'once',
+        keepCurrentZoomLevel: false,
+        circleStyle: {
+            color: '#3388ff',
+            fillColor: '#3388ff',
+            fillOpacity: 0.2,
+            weight: 2,
+            opacity: 1,
+            radius: 1000
+        },
+        markerStyle: {
+            fillColor: '#2A93EE',
+            fillOpacity: 1,
+            color: '#fff',
+            weight: 3
+        },
+        showPopup: true,
+        strings: {
+            title: "顯示我的位置",
+            popup: "您的位置"
+        },
+        locateOptions: {
+            enableHighAccuracy: true
+        },
+        onLocationError: function(err) {
+            alert("無法獲取您的位置：" + err.message);
+        }
+    }).addTo(map);
 
-                const userIcon = L.icon({
-                    iconUrl: 'user-location.png',
-                    iconSize: [40, 40],
-                    iconAnchor: [20, 40],
-                    popupAnchor: [0, -40]
-                });
-                const userMarker = L.marker([lat, lng], { icon: userIcon })
-                    .bindPopup("您的位置<br><button onclick=\"navigateFromUser('google')\">Google 導航</button><br><button onclick=\"navigateFromUser('apple')\">Apple Maps 導航</button>")
-                    .openPopup();
-                markers.addLayer(userMarker);
-
-                // 添加新的圓形，確保中心點可見
-                const circle = L.circle([lat, lng], {
-                    color: '#3388ff',
-                    fillColor: '#3388ff',
-                    fillOpacity: 0.2,
-                    weight: 2, // 增加邊界粗細
-                    opacity: 1, // 確保邊界可見
-                    radius: 1000
-                }).addTo(map);
-                circles.push(circle);
-
-                loadStores();
-            },
-            error => {
-                map = L.map('map', {
-                    zoomControl: false,
-                    maxBoundsViscosity: 1.0
-                }).setView([23.5, 121], 8);
-                L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
-                    attribution: '© <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
-                }).addTo(map);
-                map.setMaxBounds([[20, 118], [26, 124]]);
-                map.addLayer(markers);
-                loadStores();
-                alert("無法獲取您的位置，顯示預設視圖。");
-            }
-        );
-    } else {
-        map = L.map('map', {
-            zoomControl: false,
-            maxBoundsViscosity: 1.0
-        }).setView([23.5, 121], 8);
-        L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
-            attribution: '© <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
-        }).addTo(map);
-        map.setMaxBounds([[20, 118], [26, 124]]);
-        map.addLayer(markers);
-        loadStores();
-        alert("您的瀏覽器不支援地理定位，顯示預設視圖。");
-    }
+    loadStores();
 }
 
 async function loadStores() {
     const response = await fetch('store_coordinates.json');
     stores = await response.json();
     populateCounties();
+    populateMultiFilterAccordion();
     displayStores(stores);
 }
 
@@ -92,6 +68,54 @@ function populateCounties() {
         option.textContent = county;
         countySelect.appendChild(option);
     });
+}
+
+function populateMultiFilterAccordion() {
+    const accordionDiv = document.getElementById('multiFilterAccordion');
+    const directions = [...new Set(stores.map(store => store.direction))].sort();
+    accordionDiv.innerHTML = '';
+    let index = 0;
+    for (const direction of directions) {
+        const counties = [...new Set(stores.filter(store => store.direction === direction).map(store => store.county))].sort();
+        accordionDiv.innerHTML += `
+            <div class="accordion-item">
+                <h2 class="accordion-header" id="headingDirection${index}">
+                    <button class="accordion-button collapsed" type="button" data-bs-toggle="collapse" data-bs-target="#collapseDirection${index}" data-bs-allow-multiple="true" aria-expanded="false" aria-controls="collapseDirection${index}">
+                        ${direction}
+                    </button>
+                </h2>
+                <div id="collapseDirection${index}" class="accordion-collapse collapse" aria-labelledby="headingDirection${index}">
+                    <div class="accordion-body">
+                        ${counties.map(county => {
+                            const districts = [...new Set(stores.filter(store => store.county === county).map(store => store.district))].sort();
+                            return `
+                                <div class="accordion-item">
+                                    <h2 class="accordion-header" id="headingCounty${index}-${counties.indexOf(county)}">
+                                        <button class="accordion-button collapsed" type="button" data-bs-toggle="collapse" data-bs-target="#collapseCounty${index}-${counties.indexOf(county)}" data-bs-allow-multiple="true" aria-expanded="false" aria-controls="collapseCounty${index}-${counties.indexOf(county)}">
+                                            <input type="checkbox" name="county" value="${county}" onchange="handleCheckboxChange(event)"> ${county}
+                                        </button>
+                                    </h2>
+                                    <div id="collapseCounty${index}-${counties.indexOf(county)}" class="accordion-collapse collapse" aria-labelledby="headingCounty${index}-${counties.indexOf(county)}">
+                                        <div class="accordion-body checkbox-group">
+                                            ${districts.map(district => `
+                                                <label><input type="checkbox" name="district-${county}" value="${district}" onchange="handleCheckboxChange(event)"> ${district}</label><br>
+                                            `).join('')}
+                                        </div>
+                                    </div>
+                                </div>
+                            `;
+                        }).join('')}
+                    </div>
+                </div>
+            </div>
+        `;
+        index++;
+    }
+}
+
+function handleCheckboxChange(event) {
+    // 防止 Checkbox 勾選時自動展開
+    event.stopPropagation();
 }
 
 function updateDistricts() {
@@ -162,13 +186,19 @@ function displayStores(storesToDisplay) {
             }
             const marker = L.marker([store.lat, store.lng], { icon })
                 .bindPopup(`
-                    <b>${store.name}</b><br>
+                    <b style="font-size: 18px; font-weight: bold;">${store.name}</b><br>
                     類型: ${store.type}<br>
                     地址: ${store.address}<br>
                     縣市: ${store.county}<br>
                     鄉鎮市區: ${store.district}<br>
-                    <button onclick="navigate('${store.address}', 'google')">Google 導航</button><br>
-                    <button onclick="navigate('${store.address}', 'apple')">Apple Maps 導航</button>
+                    <div class="d-flex justify-content-between">
+                        <button type="button" class="btn btn-primary" onclick="navigate('${store.address}', 'google')">
+                            <img src="src/Google_maps.png" alt="Google Maps" style="width: 16px; height: 16px; margin-right: 5px;"> Google 地圖
+                        </button>
+                        <button type="button" class="btn btn-primary" onclick="navigate('${store.address}', 'apple')">
+                            <img src="src/Apple_maps.png" alt="Apple Maps" style="width: 16px; height: 16px; margin-right: 5px;"> Apple 地圖
+                        </button>
+                    </div>
                 `);
             markers.addLayer(marker);
         }
@@ -190,6 +220,10 @@ function filterStores() {
         filteredStores = filteredStores.filter(store => store.district === district);
     }
     displayStores(filteredStores);
+    // 關閉 Offcanvas
+    const offcanvasElement = document.getElementById('offcanvasNavbar');
+    const bsOffcanvas = bootstrap.Offcanvas.getInstance(offcanvasElement) || new bootstrap.Offcanvas(offcanvasElement);
+    bsOffcanvas.hide();
 }
 
 function resetFilters() {
@@ -198,45 +232,55 @@ function resetFilters() {
     displayStores(stores);
 }
 
-function locateUser() {
-    if (navigator.geolocation) {
-        navigator.geolocation.getCurrentPosition(
-            position => {
-                const lat = position.coords.latitude;
-                const lng = position.coords.longitude;
-                map.setView([lat, lng], 13);
-
-                // 清理舊的圓形
-                circles.forEach(circle => map.removeLayer(circle));
-                circles = [];
-
-                const userIcon = L.icon({
-                    iconUrl: 'src/man.png',
-                    iconSize: [40, 40],
-                    iconAnchor: [20, 40],
-                    popupAnchor: [0, -40]
+function filterMultiStores() {
+    const accordionDiv = document.getElementById('multiFilterAccordion');
+    let filteredStores = stores;
+    const selectedDistricts = [];
+    accordionDiv.querySelectorAll('.accordion-body').forEach(body => {
+        if (body.classList.contains('checkbox-group')) {
+            const county = body.parentElement.previousElementSibling.querySelector('.accordion-button input').value;
+            const checkedDistricts = Array.from(body.querySelectorAll('input[type="checkbox"]:checked')).map(input => input.value);
+            checkedDistricts.forEach(district => selectedDistricts.push({ county, district }));
+        } else {
+            const direction = body.parentElement.previousElementSibling.querySelector('.accordion-button').textContent.trim();
+            const checkedCounties = Array.from(body.querySelectorAll('input[type="checkbox"]:checked')).map(input => input.value);
+            if (checkedCounties.length > 0) {
+                checkedCounties.forEach(county => {
+                    const districts = [...new Set(stores.filter(store => store.county === county).map(store => store.district))].sort();
+                    districts.forEach(district => selectedDistricts.push({ county, district }));
                 });
-                const userMarker = L.marker([lat, lng], { icon: userIcon })
-                    .bindPopup("您的位置<br><button onclick=\"navigateFromUser('google')\">Google 導航</button><br><button onclick=\"navigateFromUser('apple')\">Apple Maps 導航</button>")
-                    .openPopup();
-                markers.addLayer(userMarker);
-
-                // 添加新的圓形，確保中心點可見
-                const circle = L.circle([lat, lng], {
-                    color: '#3388ff',
-                    fillColor: '#3388ff',
-                    fillOpacity: 0.2,
-                    weight: 2,
-                    opacity: 1,
-                    radius: 1000
-                }).addTo(map);
-                circles.push(circle);
-            },
-            error => alert("無法獲取您的位置")
-        );
-    } else {
-        alert("您的瀏覽器不支援地理定位");
+            } else {
+                const directionCounties = body.querySelectorAll('input[type="checkbox"]');
+                const allChecked = Array.from(directionCounties).every(cb => cb.checked);
+                if (allChecked) {
+                    const directionDistricts = [...new Set(stores.filter(store => store.direction === direction).map(store => store.district))].sort();
+                    stores.filter(store => store.direction === direction).forEach(store => {
+                        directionDistricts.forEach(district => selectedDistricts.push({ county: store.county, district }));
+                    });
+                }
+            }
+        }
+    });
+    if (selectedDistricts.length > 0) {
+        filteredStores = filteredStores.filter(store => {
+            return selectedDistricts.some(item => item.county === store.county && item.district === store.district);
+        });
     }
+    displayStores(filteredStores);
+    // 關閉 Offcanvas
+    const offcanvasElement = document.getElementById('offcanvasNavbar');
+    const bsOffcanvas = bootstrap.Offcanvas.getInstance(offcanvasElement) || new bootstrap.Offcanvas(offcanvasElement);
+    bsOffcanvas.hide();
+}
+
+function resetMultiFilters() {
+    const accordionDiv = document.getElementById('multiFilterAccordion');
+    accordionDiv.querySelectorAll('input[type="checkbox"]').forEach(checkbox => checkbox.checked = false);
+    displayStores(stores);
+}
+
+function locateUser() {
+    locateControl.start();
 }
 
 function navigate(address, mapType) {
@@ -269,10 +313,9 @@ function navigateFromUser(mapType) {
 }
 
 function toggleFilters() {
-    const filterContainer = document.getElementById('filterContainer');
-    const toggleIcon = document.querySelector('.toggle-icon');
-    filterContainer.classList.toggle('active');
-    toggleIcon.style.transform = filterContainer.classList.contains('active') ? 'rotate(180deg)' : 'rotate(0deg)';
+    const offcanvasElement = document.getElementById('offcanvasNavbar');
+    const bsOffcanvas = bootstrap.Offcanvas.getInstance(offcanvasElement) || new bootstrap.Offcanvas(offcanvasElement);
+    bsOffcanvas.toggle();
 }
 
 document.addEventListener('DOMContentLoaded', () => {
