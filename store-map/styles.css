@@ -9,7 +9,7 @@ body {
 
 .navbar {
     z-index: 1000;
-    background-color: transparent; /* 移除灰色背景 */
+    background-color: rgba(255, 255, 255, 0.9);
 }
 
 .navbar-toggler {
