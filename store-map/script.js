@@ -49,6 +49,7 @@ function initMap() {
     }).addTo(map);
 
     loadStores();
+    locateControl.start(); // 自動啟動定位
 }
 
 async function loadStores() {
