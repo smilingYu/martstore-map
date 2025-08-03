@@ -14,7 +14,6 @@ function initMap() {
     map.setMaxBounds([[20, 118], [26, 124]]);
     map.addLayer(markers);
 
-    // 初始化 leaflet-locatecontrol
     locateControl = L.control.locate({
         position: 'topright',
         drawCircle: true,
@@ -49,20 +48,32 @@ function initMap() {
     }).addTo(map);
 
     loadStores();
-    locateControl.start(); // 自動啟動定位
+    locateControl.start();
 }
 
 async function loadStores() {
-    const response = await fetch('store_coordinates.json');
-    stores = await response.json();
-    populateCounties();
-    populateMultiFilterAccordion();
-    displayStores(stores);
+    try {
+        const response = await fetch('store_coordinates.json');
+        if (!response.ok) throw new Error('無法載入店家資料');
+        stores = await response.json();
+        populateCounties();
+        populateMultiFilterAccordion();
+        displayStores(stores);
+    } catch (error) {
+        console.error(error);
+        alert('載入店家資料失敗，請稍後再試');
+    }
 }
 
 function populateCounties() {
     const countySelect = document.getElementById('county');
-    const counties = [...new Set(stores.map(store => store.county))].sort();
+    countySelect.innerHTML = '<option value="">選擇縣市</option>';
+    const storeTypes = Array.from(document.querySelectorAll('input[name="store-type"]:checked')).map(input => input.value);
+    let filteredStores = stores;
+    if (storeTypes.length > 0) {
+        filteredStores = stores.filter(store => storeTypes.includes(store.type.toLowerCase()));
+    }
+    const counties = [...new Set(filteredStores.map(store => store.county))].sort();
     counties.forEach(county => {
         const option = document.createElement('option');
         option.value = county;
@@ -71,13 +82,39 @@ function populateCounties() {
     });
 }
 
+function updateDistricts() {
+    const countySelect = document.getElementById('county');
+    const districtSelect = document.getElementById('district');
+    districtSelect.innerHTML = '<option value="">選擇鄉鎮市區</option>';
+    const storeTypes = Array.from(document.querySelectorAll('input[name="store-type"]:checked')).map(input => input.value);
+    const selectedCounty = countySelect.value;
+    if (selectedCounty) {
+        let filteredStores = stores;
+        if (storeTypes.length > 0) {
+            filteredStores = filteredStores.filter(store => storeTypes.includes(store.type.toLowerCase()));
+        }
+        const districts = [...new Set(filteredStores.filter(store => store.county === selectedCounty).map(store => store.district))].sort();
+        districts.forEach(district => {
+            const option = document.createElement('option');
+            option.value = district;
+            option.textContent = district;
+            districtSelect.appendChild(option);
+        });
+    }
+}
+
 function populateMultiFilterAccordion() {
     const accordionDiv = document.getElementById('multiFilterAccordion');
-    const directions = [...new Set(stores.map(store => store.direction))].sort();
+    const storeTypes = Array.from(document.querySelectorAll('input[name="multi-store-type"]:checked')).map(input => input.value);
+    let filteredStores = stores;
+    if (storeTypes.length > 0) {
+        filteredStores = stores.filter(store => storeTypes.includes(store.type.toLowerCase()));
+    }
+    const directions = [...new Set(filteredStores.map(store => store.direction))].sort();
     accordionDiv.innerHTML = '';
     let index = 0;
     for (const direction of directions) {
-        const counties = [...new Set(stores.filter(store => store.direction === direction).map(store => store.county))].sort();
+        const counties = [...new Set(filteredStores.filter(store => store.direction === direction).map(store => store.county))].sort();
         accordionDiv.innerHTML += `
             <div class="accordion-item">
                 <h2 class="accordion-header" id="headingDirection${index}">
@@ -88,19 +125,28 @@ function populateMultiFilterAccordion() {
                 <div id="collapseDirection${index}" class="accordion-collapse collapse" aria-labelledby="headingDirection${index}">
                     <div class="accordion-body">
                         ${counties.map(county => {
-                            const districts = [...new Set(stores.filter(store => store.county === county).map(store => store.district))].sort();
+                            const districts = [...new Set(filteredStores.filter(store => store.county === county).map(store => store.district))].sort();
+                            const storeCount = filteredStores.filter(store => store.county === county).length;
                             return `
                                 <div class="accordion-item">
                                     <h2 class="accordion-header" id="headingCounty${index}-${counties.indexOf(county)}">
                                         <button class="accordion-button collapsed" type="button" data-bs-toggle="collapse" data-bs-target="#collapseCounty${index}-${counties.indexOf(county)}" data-bs-allow-multiple="true" aria-expanded="false" aria-controls="collapseCounty${index}-${counties.indexOf(county)}">
-                                            <input type="checkbox" name="county" value="${county}" onchange="handleCheckboxChange(event)"> ${county}
+                                            <span class="county-checkbox"><input type="checkbox" name="county" value="${county}" onchange="handleCheckboxChange(event)" aria-label="選擇${county}"> ${county}</span>
+                                            <span class="store-count">(${storeCount})</span>
                                         </button>
                                     </h2>
                                     <div id="collapseCounty${index}-${counties.indexOf(county)}" class="accordion-collapse collapse" aria-labelledby="headingCounty${index}-${counties.indexOf(county)}">
                                         <div class="accordion-body checkbox-group">
-                                            ${districts.map(district => `
-                                                <label><input type="checkbox" name="district-${county}" value="${district}" onchange="handleCheckboxChange(event)"> ${district}</label><br>
-                                            `).join('')}
+                                            ${districts.map(district => {
+                                                const districtStoreCount = filteredStores.filter(store => store.county === county && store.district === district).length;
+                                                return `
+                                                    <label>
+                                                        <input type="checkbox" name="district-${county}" value="${district}" onchange="handleCheckboxChange(event)" aria-label="選擇${district}">
+                                                        ${district}
+                                                        <span class="district-count">(${districtStoreCount})</span>
+                                                    </label><br>
+                                                `;
+                                            }).join('')}
                                         </div>
                                     </div>
                                 </div>
@@ -114,25 +160,12 @@ function populateMultiFilterAccordion() {
     }
 }
 
-function handleCheckboxChange(event) {
-    // 防止 Checkbox 勾選時自動展開
-    event.stopPropagation();
+function updateMultiFilterAccordion() {
+    populateMultiFilterAccordion();
 }
 
-function updateDistricts() {
-    const countySelect = document.getElementById('county');
-    const districtSelect = document.getElementById('district');
-    districtSelect.innerHTML = '<option value="">選擇鄉鎮市區</option>';
-    const selectedCounty = countySelect.value;
-    if (selectedCounty) {
-        const districts = [...new Set(stores.filter(store => store.county === selectedCounty).map(store => store.district))].sort();
-        districts.forEach(district => {
-            const option = document.createElement('option');
-            option.value = district;
-            option.textContent = district;
-            districtSelect.appendChild(option);
-        });
-    }
+function handleCheckboxChange(event) {
+    event.stopPropagation();
 }
 
 function displayStores(storesToDisplay) {
@@ -211,9 +244,13 @@ function displayStores(storesToDisplay) {
 }
 
 function filterStores() {
+    const storeTypes = Array.from(document.querySelectorAll('input[name="store-type"]:checked')).map(input => input.value);
     const county = document.getElementById('county').value;
     const district = document.getElementById('district').value;
     let filteredStores = stores;
+    if (storeTypes.length > 0) {
+        filteredStores = filteredStores.filter(store => storeTypes.includes(store.type.toLowerCase()));
+    }
     if (county) {
         filteredStores = filteredStores.filter(store => store.county === county);
     }
@@ -221,41 +258,46 @@ function filterStores() {
         filteredStores = filteredStores.filter(store => store.district === district);
     }
     displayStores(filteredStores);
-    // 關閉 Offcanvas
     const offcanvasElement = document.getElementById('offcanvasNavbar');
     const bsOffcanvas = bootstrap.Offcanvas.getInstance(offcanvasElement) || new bootstrap.Offcanvas(offcanvasElement);
     bsOffcanvas.hide();
 }
 
 function resetFilters() {
+    document.querySelectorAll('input[name="store-type"]').forEach(checkbox => checkbox.checked = false);
     document.getElementById('county').value = '';
     document.getElementById('district').innerHTML = '<option value="">選擇鄉鎮市區</option>';
+    populateCounties();
     displayStores(stores);
 }
 
 function filterMultiStores() {
     const accordionDiv = document.getElementById('multiFilterAccordion');
+    const storeTypes = Array.from(document.querySelectorAll('input[name="multi-store-type"]:checked')).map(input => input.value);
     let filteredStores = stores;
+    if (storeTypes.length > 0) {
+        filteredStores = filteredStores.filter(store => storeTypes.includes(store.type.toLowerCase()));
+    }
     const selectedDistricts = [];
     accordionDiv.querySelectorAll('.accordion-body').forEach(body => {
         if (body.classList.contains('checkbox-group')) {
-            const county = body.parentElement.previousElementSibling.querySelector('.accordion-button input').value;
+            const county = body.parentElement.previousElementSibling.querySelector('.county-checkbox input').value;
             const checkedDistricts = Array.from(body.querySelectorAll('input[type="checkbox"]:checked')).map(input => input.value);
             checkedDistricts.forEach(district => selectedDistricts.push({ county, district }));
         } else {
             const direction = body.parentElement.previousElementSibling.querySelector('.accordion-button').textContent.trim();
-            const checkedCounties = Array.from(body.querySelectorAll('input[type="checkbox"]:checked')).map(input => input.value);
+            const checkedCounties = Array.from(body.querySelectorAll('.county-checkbox input[type="checkbox"]:checked')).map(input => input.value);
             if (checkedCounties.length > 0) {
                 checkedCounties.forEach(county => {
-                    const districts = [...new Set(stores.filter(store => store.county === county).map(store => store.district))].sort();
+                    const districts = [...new Set(filteredStores.filter(store => store.county === county).map(store => store.district))].sort();
                     districts.forEach(district => selectedDistricts.push({ county, district }));
                 });
             } else {
-                const directionCounties = body.querySelectorAll('input[type="checkbox"]');
+                const directionCounties = body.querySelectorAll('.county-checkbox input[type="checkbox"]');
                 const allChecked = Array.from(directionCounties).every(cb => cb.checked);
                 if (allChecked) {
-                    const directionDistricts = [...new Set(stores.filter(store => store.direction === direction).map(store => store.district))].sort();
-                    stores.filter(store => store.direction === direction).forEach(store => {
+                    const directionDistricts = [...new Set(filteredStores.filter(store => store.direction === direction).map(store => store.district))].sort();
+                    filteredStores.filter(store => store.direction === direction).forEach(store => {
                         directionDistricts.forEach(district => selectedDistricts.push({ county: store.county, district }));
                     });
                 }
@@ -268,15 +310,16 @@ function filterMultiStores() {
         });
     }
     displayStores(filteredStores);
-    // 關閉 Offcanvas
     const offcanvasElement = document.getElementById('offcanvasNavbar');
     const bsOffcanvas = bootstrap.Offcanvas.getInstance(offcanvasElement) || new bootstrap.Offcanvas(offcanvasElement);
     bsOffcanvas.hide();
 }
 
 function resetMultiFilters() {
+    document.querySelectorAll('input[name="multi-store-type"]').forEach(checkbox => checkbox.checked = false);
     const accordionDiv = document.getElementById('multiFilterAccordion');
     accordionDiv.querySelectorAll('input[type="checkbox"]').forEach(checkbox => checkbox.checked = false);
+    populateMultiFilterAccordion();
     displayStores(stores);
 }
 

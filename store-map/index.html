@@ -58,82 +58,99 @@
     <link rel="stylesheet" href="styles.css">
 </head>
 <body>
-    <!-- 導航列 -->
-    <nav class="navbar">
-        <div class="container-fluid">
-            <button class="navbar-toggler" type="button" data-bs-toggle="offcanvas" data-bs-target="#offcanvasNavbar" aria-controls="offcanvasNavbar" aria-label="切換篩選">
-                <span class="navbar-toggler-icon"></span>
-            </button>
-            <div class="offcanvas offcanvas-start" tabindex="-1" id="offcanvasNavbar" aria-labelledby="offcanvasNavbarLabel">
-                <div class="offcanvas-header">
-                    <button type="button" class="btn-close" data-bs-dismiss="offcanvas" aria-label="關閉"></button>
+    <!-- Offcanvas 篩選面板 -->
+    <div class="offcanvas offcanvas-start" tabindex="-1" id="offcanvasNavbar" aria-labelledby="offcanvasNavbarLabel">
+        <div class="offcanvas-header">
+            <h5 class="offcanvas-title" id="offcanvasNavbarLabel">篩選選項</h5>
+            <button type="button" class="btn-close" data-bs-dismiss="offcanvas" aria-label="關閉"></button>
+        </div>
+        <div class="offcanvas-body">
+            <ul class="nav nav-tabs" id="filterTabs" role="tablist">
+                <li class="nav-item" role="presentation">
+                    <button class="nav-link active" id="filter-tab" data-bs-toggle="tab" data-bs-target="#filter-content" type="button" role="tab" aria-controls="filter-content" aria-selected="true">單一篩選</button>
+                </li>
+                <li class="nav-item" role="presentation">
+                    <button class="nav-link" id="multi-filter-tab" data-bs-toggle="tab" data-bs-target="#multi-filter-content" type="button" role="tab" aria-controls="multi-filter-content" aria-selected="false">多重篩選</button>
+                </li>
+                <li class="nav-item" role="presentation">
+                    <button class="nav-link disabled" id="tab3-tab" data-bs-toggle="tab" data-bs-target="#tab3-content" type="button" role="tab" aria-controls="tab3-content" aria-selected="false">By昱翔</button>
+                </li>
+            </ul>
+            <div class="tab-content" id="filterTabContent">
+                <div class="tab-pane fade show active" id="filter-content" role="tabpanel" aria-labelledby="filter-tab">
+                    <form class="d-flex flex-column mt-3">
+                        <div class="filter-group mb-3">
+                            <label class="form-label">店家類型</label>
+                            <div class="checkbox-group">
+                                <label><input type="checkbox" name="store-type" value="pxmart" onchange="updateCounties()" aria-label="選擇全聯"> 全聯</label><br>
+                                <label><input type="checkbox" name="store-type" value="carrefour" onchange="updateCounties()" aria-label="選擇家樂福"> 家樂福</label><br>
+                                <label><input type="checkbox" name="store-type" value="rt-mart" onchange="updateCounties()" aria-label="選擇大潤發"> 大潤發</label><br>
+                                <label><input type="checkbox" name="store-type" value="ssafe" onchange="updateCounties()" aria-label="選擇大買家"> 大買家</label>
+                            </div>
+                        </div>
+                        <div class="filter-group mb-3">
+                            <label for="county" class="form-label">縣市</label>
+                            <select id="county" class="form-select" onchange="updateDistricts()">
+                                <option value="">選擇縣市</option>
+                            </select>
+                        </div>
+                        <div class="filter-group mb-3">
+                            <label for="district" class="form-label">鄉鎮市區</label>
+                            <select id="district" class="form-select">
+                                <option value="">選擇鄉鎮市區</option>
+                            </select>
+                        </div>
+                        <div class="button-group">
+                            <button type="button" class="btn btn-outline-secondary btn-fixed-size me-2" onclick="resetFilters()">重置</button>
+                            <button type="button" class="btn btn-primary btn-fixed-size" onclick="filterStores()">篩選</button>
+                        </div>
+                    </form>
                 </div>
-                <div class="offcanvas-body">
-                    <ul class="nav nav-tabs" id="filterTabs" role="tablist">
-                        <li class="nav-item" role="presentation">
-                            <button class="nav-link active" id="filter-tab" data-bs-toggle="tab" data-bs-target="#filter-content" type="button" role="tab" aria-controls="filter-content" aria-selected="true">單一篩選</button>
-                        </li>
-                        <li class="nav-item" role="presentation">
-                            <button class="nav-link" id="multi-filter-tab" data-bs-toggle="tab" data-bs-target="#multi-filter-content" type="button" role="tab" aria-controls="multi-filter-content" aria-selected="false">多重篩選</button>
-                        </li>
-                        <li class="nav-item" role="presentation">
-                            <button class="nav-link disabled" id="tab3-tab" data-bs-toggle="tab" data-bs-target="#tab3-content" type="button" role="tab" aria-controls="tab3-content" aria-selected="false">By昱翔</button>
-                        </li>
-                    </ul>
-                    <div class="tab-content" id="filterTabContent">
-                        <div class="tab-pane fade show active" id="filter-content" role="tabpanel" aria-labelledby="filter-tab">
-                            <form class="d-flex flex-column mt-3">
-                                <div class="filter-group mb-3">
-                                    <label for="county" class="form-label">縣市</label>
-                                    <select id="county" class="form-select" onchange="updateDistricts()">
-                                        <option value="">選擇縣市</option>
-                                    </select>
-                                </div>
-                                <div class="filter-group mb-3">
-                                    <label for="district" class="form-label">鄉鎮市區</label>
-                                    <select id="district" class="form-select">
-                                        <option value="">選擇鄉鎮市區</option>
-                                    </select>
-                                </div>
-                                <div class="button-group">
-                                    <button type="button" class="btn btn-outline-secondary btn-fixed-size me-2" onclick="resetFilters()">重置</button>
-                                    <button type="button" class="btn btn-primary btn-fixed-size" onclick="filterStores()">篩選</button>
-                                </div>
-                            </form>
+                <div class="tab-pane fade" id="multi-filter-content" role="tabpanel" aria-labelledby="multi-filter-tab">
+                    <form class="d-flex flex-column mt-3">
+                        <div class="filter-group mb-3">
+                            <label class="form-label">店家類型</label>
+                            <div class="checkbox-group">
+                                <label><input type="checkbox" name="multi-store-type" value="pxmart" onchange="updateMultiFilterAccordion()" aria-label="選擇全聯"> 全聯</label><br>
+                                <label><input type="checkbox" name="multi-store-type" value="carrefour" onchange="updateMultiFilterAccordion()" aria-label="選擇家樂福"> 家樂福</label><br>
+                                <label><input type="checkbox" name="multi-store-type" value="rt-mart" onchange="updateMultiFilterAccordion()" aria-label="選擇大潤發"> 大潤發</label><br>
+                                <label><input type="checkbox" name="multi-store-type" value="ssafe" onchange="updateMultiFilterAccordion()" aria-label="選擇大買家"> 大買家</label>
+                            </div>
                         </div>
-                        <div class="tab-pane fade" id="multi-filter-content" role="tabpanel" aria-labelledby="multi-filter-tab">
-                            <form class="d-flex flex-column mt-3">
-                                <div class="accordion" id="multiFilterAccordion">
-                                    <!-- 蜂巢式階級手風琴項目將由 JS 動態生成 -->
-                                </div>
-                                <div class="button-group mt-3">
-                                    <button type="button" class="btn btn-outline-secondary btn-fixed-size me-2" onclick="resetMultiFilters()">重置</button>
-                                    <button type="button" class="btn btn-primary btn-fixed-size" onclick="filterMultiStores()">篩選</button>
-                                </div>
-                            </form>
+                        <div class="accordion" id="multiFilterAccordion">
+                            <!-- 蜂巢式階級手風琴項目將由 JS 動態生成 -->
                         </div>
-                        <div class="tab-pane fade" id="tab3-content" role="tabpanel" aria-labelledby="tab3-tab">
-                            <p>頁籤 3 內容（待定義）</p>
+                        <div class="button-group mt-3">
+                            <button type="button" class="btn btn-outline-secondary btn-fixed-size me-2" onclick="resetMultiFilters()">重置</button>
+                            <button type="button" class="btn btn-primary btn-fixed-size" onclick="filterMultiStores()">篩選</button>
                         </div>
-                    </div>
+                    </form>
+                </div>
+                <div class="tab-pane fade" id="tab3-content" role="tabpanel" aria-labelledby="tab3-tab">
+                    <p>頁籤 3 內容（待定義）</p>
                 </div>
             </div>
         </div>
-    </nav>
+    </div>
 
     <!-- 主要內容 -->
     <div class="content">
         <div class="map-wrapper">
             <div id="map"></div>
+            <!-- 左上角篩選按鈕 -->
+            <button class="filter-btn" title="開啟篩選" onclick="toggleFilters()" aria-label="開啟篩選面板">
+                <i class="bi bi-list"></i>
+            </button>
+            <!-- 地圖控制按鈕 -->
             <div class="map-controls">
-                <button class="control-btn" title="我的位置" onclick="locateUser()">
-                    <i class="bi bi-geo-alt-fill"></i>
-                </button>
-                <button class="control-btn" title="放大" onclick="map.zoomIn()">
+                <button class="control-btn" title="放大" onclick="map.zoomIn()" aria-label="放大地圖">
                     <i class="bi bi-plus-circle-fill"></i>
                 </button>
-                <button class="control-btn" title="縮小" onclick="map.zoomOut()">
+                <button class="control-btn" title="縮小" onclick="map.zoomOut()" aria-label="縮小地圖">
                     <i class="bi bi-dash-circle-fill"></i>
+                </button>
+                <button class="control-btn" title="我的位置" onclick="locateUser()" aria-label="定位到我的位置">
+                    <i class="bi bi-geo-alt-fill"></i>
                 </button>
             </div>
         </div>
