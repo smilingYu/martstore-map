@@ -78,7 +78,7 @@
                     <button class="nav-link" id="multi-filter-tab" data-bs-toggle="tab" data-bs-target="#multi-filter-content" type="button" role="tab" aria-controls="multi-filter-content" aria-selected="false">多重篩選</button>
                 </li>
                 <li class="nav-item" role="presentation">
-                    <button class="nav-link disabled" id="tab3-tab" data-bs-toggle="tab" data-bs-target="#tab3-content" type="button" role="tab" aria-controls="tab3-content" aria-selected="false">By昱翔</button>
+                    <button class="nav-link" id="tab3-tab" data-bs-toggle="tab" data-bs-target="#tab3-content" type="button" role="tab" aria-controls="tab3-content" aria-selected="false">By昱翔</button>
                 </li>
             </ul>
             <div class="tab-content" id="filterTabContent">
@@ -132,7 +132,30 @@
                     </form>
                 </div>
                 <div class="tab-pane fade" id="tab3-content" role="tabpanel" aria-labelledby="tab3-tab">
-                    <p>頁籤 3 內容（待定義）</p>
+                    <div class="mt-3">
+                        <h6>功能設定</h6>
+                        <table class="table table-bordered">
+                            <tbody>
+                                <tr>
+                                    <td>地圖標記叢集</td>
+                                    <td>
+                                        <div class="form-check form-switch">
+                                            <input class="form-check-input" type="checkbox" id="markerClusterSwitch" checked onchange="toggleMarkerCluster()">
+                                            <label class="form-check-label" for="markerClusterSwitch">開啟/關閉</label>
+                                        </div>
+                                    </td>
+                                </tr>
+                                <tr>
+                                    <td>建立桌面捷徑</td>
+                                    <td>
+                                        <button type="button" class="btn btn-primary btn-sm" id="desktopShortcutBtn" onclick="createDesktopShortcut()">
+                                            <i class="bi bi-download"></i> 建立捷徑
+                                        </button>
+                                    </td>
+                                </tr>
+                            </tbody>
+                        </table>
+                    </div>
                 </div>
             </div>
         </div>

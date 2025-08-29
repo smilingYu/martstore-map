@@ -190,6 +190,24 @@ body {
     display: none;
 }
 
+.table {
+    font-size: 0.9em;
+}
+
+.form-check-input {
+    margin-right: 10px;
+}
+
+.form-check-label {
+    font-size: 0.9em;
+}
+
+.btn-sm {
+    font-size: 0.85em;
+    padding: 0.25rem 0.5rem;
+}
+
+
 /*響應式按鈕界面測試*/
 /*
 @media (max-width: 768px) {

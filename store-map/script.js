@@ -1,7 +1,10 @@
 let map;
 let markers = L.markerClusterGroup();
+let nonClusteredMarkers = L.layerGroup();
+let isMarkerClusterEnabled = true;
 let locateControl;
 let stores = [];
+let deferredPrompt;
 
 function initMap() {
     map = L.map('map', {
@@ -50,6 +53,15 @@ function initMap() {
     loadStores();
     locateControl.start();
 }
+
+window.addEventListener('beforeinstallprompt', (e) => {
+    e.preventDefault();
+    deferredPrompt = e;
+    const shortcutBtn = document.getElementById('desktopShortcutBtn');
+    if (shortcutBtn) {
+        shortcutBtn.style.display = 'block';
+    }
+});
 
 async function loadStores() {
     try {
@@ -169,7 +181,16 @@ function handleCheckboxChange(event) {
 }
 
 function displayStores(storesToDisplay) {
-    markers.clearLayers();
+    if (isMarkerClusterEnabled) {
+        markers.clearLayers();
+        map.removeLayer(nonClusteredMarkers);
+        map.addLayer(markers);
+    } else {
+        nonClusteredMarkers.clearLayers();
+        map.removeLayer(markers);
+        map.addLayer(nonClusteredMarkers);
+    }
+
     storesToDisplay.forEach(store => {
         if (store.lat && store.lng) {
             let icon;
@@ -234,12 +255,107 @@ function displayStores(storesToDisplay) {
                         </button>
                     </div>
                 `);
-            markers.addLayer(marker);
+            if (isMarkerClusterEnabled) {
+                markers.addLayer(marker);
+            } else {
+                nonClusteredMarkers.addLayer(marker);
+            }
         }
     });
     if (storesToDisplay.length > 0) {
-        const group = new L.featureGroup(markers.getLayers());
+        const group = new L.featureGroup(isMarkerClusterEnabled ? markers.getLayers() : nonClusteredMarkers.getLayers());
         map.fitBounds(group.getBounds(), { padding: [0, 0] });
+    }
+}
+
+//製作地圖標記叢集開關功能
+function toggleMarkerCluster() {
+    isMarkerClusterEnabled = document.getElementById('markerClusterSwitch').checked;
+    const currentStores = getCurrentFilteredStores();
+    displayStores(currentStores);
+}
+
+function getCurrentFilteredStores() {
+    const activeTab = document.querySelector('#filterTabs .nav-link.active').id;
+    if (activeTab === 'filter-tab') {
+        const storeTypes = Array.from(document.querySelectorAll('input[name="store-type"]:checked')).map(input => input.value);
+        const county = document.getElementById('county').value;
+        const district = document.getElementById('district').value;
+        let filteredStores = stores;
+        if (storeTypes.length > 0) {
+            filteredStores = filteredStores.filter(store => storeTypes.includes(store.type.toLowerCase()));
+        }
+        if (county) {
+            filteredStores = filteredStores.filter(store => store.county === county);
+        }
+        if (district) {
+            filteredStores = filteredStores.filter(store => store.district === district);
+        }
+        return filteredStores;
+    } else if (activeTab === 'multi-filter-tab') {
+        const storeTypes = Array.from(document.querySelectorAll('input[name="multi-store-type"]:checked')).map(input => input.value);
+        let filteredStores = stores;
+        if (storeTypes.length > 0) {
+            filteredStores = filteredStores.filter(store => storeTypes.includes(store.type.toLowerCase()));
+        }
+        const selectedDistricts = [];
+        const accordionDiv = document.getElementById('multiFilterAccordion');
+        accordionDiv.querySelectorAll('.accordion-body').forEach(body => {
+            if (body.classList.contains('checkbox-group')) {
+                const county = body.parentElement.previousElementSibling.querySelector('.county-checkbox input').value;
+                const checkedDistricts = Array.from(body.querySelectorAll('input[type="checkbox"]:checked')).map(input => input.value);
+                checkedDistricts.forEach(district => selectedDistricts.push({ county, district }));
+            } else {
+                const direction = body.parentElement.previousElementSibling.querySelector('.accordion-button').textContent.trim();
+                const checkedCounties = Array.from(body.querySelectorAll('.county-checkbox input[type="checkbox"]:checked')).map(input => input.value);
+                if (checkedCounties.length > 0) {
+                    checkedCounties.forEach(county => {
+                        const districts = [...new Set(filteredStores.filter(store => store.county === county).map(store => store.district))].sort();
+                        districts.forEach(district => selectedDistricts.push({ county, district }));
+                    });
+                } else {
+                    const directionCounties = body.querySelectorAll('.county-checkbox input[type="checkbox"]');
+                    const allChecked = Array.from(directionCounties).every(cb => cb.checked);
+                    if (allChecked) {
+                        const directionDistricts = [...new Set(filteredStores.filter(store => store.direction === direction).map(store => store.district))].sort();
+                        filteredStores.filter(store => store.direction === direction).forEach(store => {
+                            directionDistricts.forEach(district => selectedDistricts.push({ county: store.county, district }));
+                        });
+                    }
+                }
+            }
+        });
+        if (selectedDistricts.length > 0) {
+            filteredStores = filteredStores.filter(store => {
+                return selectedDistricts.some(item => item.county === store.county && item.district === store.district);
+            });
+        }
+        return filteredStores;
+    }
+    return stores;
+}
+
+//製作捷徑加入主畫面功能
+function createDesktopShortcut() {
+    const isMobile = /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent);
+    if (isMobile && deferredPrompt) {
+        deferredPrompt.prompt();
+        deferredPrompt.userChoice.then((choice) => {
+            if (choice.outcome === 'accepted') {
+                alert('已成功將應用程式加入主畫面！');
+            } else {
+                alert('已取消加入主畫面。');
+            }
+            deferredPrompt = null;
+        });
+    } else {
+        const link = document.createElement('a');
+        link.href = `data:text/plain,[InternetShortcut]%0D%0AURL=${window.location.href}`;
+        link.download = '全台量販店與全聯地圖.url';
+        document.body.appendChild(link);
+        link.click();
+        document.body.removeChild(link);
+        alert('桌面捷徑檔案已下載，請將其儲存至桌面！');
     }
 }
 
@@ -298,7 +414,7 @@ function filterMultiStores() {
                 if (allChecked) {
                     const directionDistricts = [...new Set(filteredStores.filter(store => store.direction === direction).map(store => store.district))].sort();
                     filteredStores.filter(store => store.direction === direction).forEach(store => {
-                        directionDistricts.forEach(district => selectedDistricts.push({ county: store.county, district }));
+                        directionDistricts.forERIC(district => selectedDistricts.push({ county: store.county, district }));
                     });
                 }
             }
