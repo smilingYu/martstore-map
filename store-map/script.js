@@ -335,30 +335,6 @@ function getCurrentFilteredStores() {
     return stores;
 }
 
-//製作捷徑加入主畫面功能
-function createDesktopShortcut() {
-    const isMobile = /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent);
-    if (isMobile && deferredPrompt) {
-        deferredPrompt.prompt();
-        deferredPrompt.userChoice.then((choice) => {
-            if (choice.outcome === 'accepted') {
-                alert('已成功將應用程式加入主畫面！');
-            } else {
-                alert('已取消加入主畫面。');
-            }
-            deferredPrompt = null;
-        });
-    } else {
-        const link = document.createElement('a');
-        link.href = `data:text/plain,[InternetShortcut]%0D%0AURL=${window.location.href}`;
-        link.download = '全台量販店與全聯地圖.url';
-        document.body.appendChild(link);
-        link.click();
-        document.body.removeChild(link);
-        alert('桌面捷徑檔案已下載，請將其儲存至桌面！');
-    }
-}
-
 function filterStores() {
     const storeTypes = Array.from(document.querySelectorAll('input[name="store-type"]:checked')).map(input => input.value);
     const county = document.getElementById('county').value;
