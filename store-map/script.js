@@ -184,7 +184,7 @@ function initializeSearch() {
     // 防抖：300ms 延遲
     searchInput.addEventListener('input', () => {
         clearTimeout(debounceTimer);
-        debounceTimer = setTimeout(performSearch, 300);
+        debounceTimer = setTimeout(performSearch, 200);
     });
 }
 
