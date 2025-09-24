@@ -5,6 +5,7 @@ let isMarkerClusterEnabled = true;
 let locateControl;
 let stores = [];
 let deferredPrompt;
+let searchMarkers = {};
 
 function initMap() {
     map = L.map('map', {
@@ -46,7 +47,7 @@ function initMap() {
             enableHighAccuracy: true
         },
         onLocationError: function(err) {
-            alert("無法獲取您的位置：" + err.message);
+            console.error("無法獲取您的位置：" + err.message);
         }
     }).addTo(map);
 
@@ -71,10 +72,151 @@ async function loadStores() {
         populateCounties();
         populateMultiFilterAccordion();
         displayStores(stores);
+        initializeSearch();
     } catch (error) {
         console.error(error);
         alert('載入店家資料失敗，請稍後再試');
     }
+}
+
+function calculateDistance(lat1, lon1, lat2, lon2) {
+    const R = 6371; // 地球半徑（公里）
+    const dLat = (lat2 - lat1) * Math.PI / 180;
+    const dLon = (lon2 - lon1) * Math.PI / 180;
+    const a = Math.sin(dLat / 2) * Math.sin(dLat / 2) +
+              Math.cos(lat1 * Math.PI / 180) * Math.cos(lat2 * Math.PI / 180) *
+              Math.sin(dLon / 2) * Math.sin(dLon / 2);
+    const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+    return R * c; // 距離（公里）
+}
+
+function initializeSearch() {
+    const searchInput = document.getElementById('storeSearch');
+    const searchResults = document.getElementById('searchResults');
+    let debounceTimer;
+    let currentQuery = '';
+    let abortController = null;
+
+    const performSearch = () => {
+        const query = searchInput.value.trim().toLowerCase();
+        currentQuery = query;
+        searchResults.innerHTML = '';
+        searchResults.style.display = 'none';
+
+        if (query) {
+            let filteredStores = stores.filter(store => store.name.toLowerCase().includes(query));
+            if (filteredStores.length > 0) {
+                // 取消之前的定位請求
+                if (abortController) {
+                    abortController.abort();
+                }
+                abortController = new AbortController();
+
+                navigator.geolocation.getCurrentPosition(
+                    (position) => {
+                        // 檢查是否為最新查詢
+                        if (currentQuery !== query) return;
+
+                        const userLat = position.coords.latitude;
+                        const userLon = position.coords.longitude;
+                        const storesWithDistance = filteredStores
+                            .map(store => ({
+                                ...store,
+                                distance: calculateDistance(userLat, userLon, store.lat, store.lng)
+                            }))
+                            .sort((a, b) => a.distance - b.distance)
+                            .slice(0, 10); // 限制最多 10 個結果
+
+                        searchResults.style.display = 'block';
+                        searchResults.innerHTML = ''; // 清空並重新填充
+                        storesWithDistance.forEach(store => {
+                            const item = document.createElement('div');
+                            item.className = 'list-group-item';
+                            item.innerHTML = `
+                                ${store.name}
+                                <span class="distance">(${store.distance.toFixed(2)} 公里)</span>
+                            `;
+                            item.setAttribute('aria-label', `選擇店家 ${store.name}，距離 ${store.distance.toFixed(2)} 公里`);
+                            item.addEventListener('click', () => {
+                                focusOnStore(store);
+                                searchResults.innerHTML = '';
+                                searchResults.style.display = 'none';
+                                searchInput.value = '';
+                            });
+                            searchResults.appendChild(item);
+                        });
+                    },
+                    (error) => {
+                        // 檢查是否為最新查詢
+                        if (currentQuery !== query) return;
+
+                        console.error("定位失敗:", error);
+                        // 按名稱排序，無距離顯示
+                        const sortedStores = filteredStores
+                            .sort((a, b) => a.name.localeCompare(b.name))
+                            .slice(0, 10); // 限制最多 10 個結果
+
+                        searchResults.style.display = 'block';
+                        searchResults.innerHTML = ''; // 清空並重新填充
+                        sortedStores.forEach(store => {
+                            const item = document.createElement('div');
+                            item.className = 'list-group-item';
+                            item.textContent = store.name;
+                            item.setAttribute('aria-label', `選擇店家 ${store.name}`);
+                            item.addEventListener('click', () => {
+                                focusOnStore(store);
+                                searchResults.innerHTML = '';
+                                searchResults.style.display = 'none';
+                                searchInput.value = '';
+                            });
+                            searchResults.appendChild(item);
+                        });
+                    },
+                    { 
+                        enableHighAccuracy: true,
+                        signal: abortController.signal // 支持取消
+                    }
+                );
+            }
+        }
+    };
+
+    // 防抖：300ms 延遲
+    searchInput.addEventListener('input', () => {
+        clearTimeout(debounceTimer);
+        debounceTimer = setTimeout(performSearch, 300);
+    });
+}
+
+function focusOnStore(store) {
+    if (store.lat && store.lng) {
+        const marker = searchMarkers[store.name];
+        if (marker) {
+            map.setView([store.lat, store.lng], 15);
+            marker.openPopup();
+        } else {
+            displayStores([store]);
+            map.setView([store.lat, store.lng], 15);
+            const newMarker = (isMarkerClusterEnabled ? markers : nonClusteredMarkers).getLayers().find(m => 
+                m.getLatLng().lat === store.lat && m.getLatLng().lng === store.lng
+            );
+            if (newMarker) {
+                newMarker.openPopup();
+                searchMarkers[store.name] = newMarker;
+            }
+        }
+    }
+}
+
+function clearSearch() {
+    const searchInput = document.getElementById('storeSearch');
+    const searchResults = document.getElementById('searchResults');
+    searchInput.value = '';
+    searchResults.innerHTML = '';
+    searchResults.style.display = 'none';
+    if (debounceTimer) clearTimeout(debounceTimer); // 清除防抖計時器
+    if (abortController) abortController.abort(); // 取消定位
+    displayStores(getCurrentFilteredStores());
 }
 
 function populateCounties() {
@@ -260,6 +402,7 @@ function displayStores(storesToDisplay) {
             } else {
                 nonClusteredMarkers.addLayer(marker);
             }
+            searchMarkers[store.name] = marker;
         }
     });
     if (storesToDisplay.length > 0) {
@@ -390,7 +533,7 @@ function filterMultiStores() {
                 if (allChecked) {
                     const directionDistricts = [...new Set(filteredStores.filter(store => store.direction === direction).map(store => store.district))].sort();
                     filteredStores.filter(store => store.direction === direction).forEach(store => {
-                        directionDistricts.forERIC(district => selectedDistricts.push({ county: store.county, district }));
+                        directionDistricts.forEach(district => selectedDistricts.push({ county: store.county, district }));
                     });
                 }
             }
@@ -443,7 +586,7 @@ function navigateFromUser(mapType) {
                 }
                 window.open(url, '_blank');
             },
-            error => alert("無法獲取您的位置")
+            error => console.error("無法獲取您的位置：" + error.message)
         );
     }
 }

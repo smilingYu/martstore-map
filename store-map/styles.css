@@ -76,6 +76,60 @@ body {
     height: 100%;
 }
 
+.search-wrapper {
+    position: absolute;
+    top: 10px;
+    left: 50%;
+    transform: translateX(-50%);
+    z-index: 1000;
+    width: 300px;
+    max-width: 90%;
+}
+
+.search-results {
+    background: white;
+    border: 1px solid #ccc;
+    border-radius: 3px;
+    max-height: 200px;
+    overflow-y: auto;
+    display: none;
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+}
+
+.search-results .list-group-item {
+    cursor: pointer;
+    padding: 8px 12px;
+    font-size: 0.9em;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+}
+
+.search-results .list-group-item:hover {
+    background-color: #f0f0f0;
+}
+
+.search-results .distance {
+    color: #666;
+    font-size: 0.85em;
+}
+
+.search-wrapper .btn-outline-secondary {
+    background-color: #ffffff;
+    border-color: #ccc;
+    color: #333;
+}
+
+.search-wrapper .btn-outline-secondary:hover {
+    background-color: #dc3545;
+}
+
+.search-wrapper .btn-outline-secondary:active {
+    background-color: #dc3545 !important;
+    color: #ffffff !important;
+    border-color: #dc3545 !important;
+}
+
 .map-wrapper {
     flex: 1;
     position: relative;
@@ -92,7 +146,7 @@ body {
 
 .map-controls {
     position: absolute;
-    top: 10px;
+    bottom: 20px;
     right: 10px;
     z-index: 1000;
     background: rgba(255, 255, 255, 0.9);
@@ -106,8 +160,8 @@ body {
 
 .filter-btn {
     position: absolute;
-    top: 10px;
-    left: 10px;
+    top: 50px;
+    left: 5px;
     z-index: 1000;
     width: 40px;
     height: 40px;
