@@ -261,6 +261,19 @@ body {
     padding: 0.25rem 0.5rem;
 }
 
+/* 避免 divIcon 背景與邊框 */
+.custom-div-icon {
+    background: transparent !important;
+    border: none !important;
+    box-shadow: none !important;
+}
+
+/* 標籤文字換行處理（避免過長） */
+.custom-div-icon div {
+    max-width: 100px;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
 
 /*響應式按鈕界面測試*/
 /*

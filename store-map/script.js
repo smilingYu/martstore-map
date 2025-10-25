@@ -335,52 +335,45 @@ function displayStores(storesToDisplay) {
 
     storesToDisplay.forEach(store => {
         if (store.lat && store.lng) {
-            let icon;
-            switch (store.type.toLowerCase()) {
-                case 'carrefour':
-                case '家樂福':
-                    icon = L.icon({
-                        iconUrl: 'src/carrefour-logo.png',
-                        iconSize: [40, 40],
-                        iconAnchor: [20, 40],
-                        popupAnchor: [0, -40]
-                    });
-                    break;
-                case 'pxmart':
-                case '全聯':
-                    icon = L.icon({
-                        iconUrl: 'src/pxmart-logo.png',
-                        iconSize: [40, 40],
-                        iconAnchor: [20, 40],
-                        popupAnchor: [0, -40]
-                    });
-                    break;
-                case 'rt-mart':
-                case '大潤發':
-                    icon = L.icon({
-                        iconUrl: 'src/rtmart-logo.png',
-                        iconSize: [40, 40],
-                        iconAnchor: [20, 40],
-                        popupAnchor: [0, -40]
-                    });
-                    break;
-                case 'ssafe':
-                case '大買家':
-                    icon = L.icon({
-                        iconUrl: 'src/ssafe-logo.png',
-                        iconSize: [40, 40],
-                        iconAnchor: [20, 40],
-                        popupAnchor: [0, -40]
-                    });
-                    break;
-                default:
-                    icon = L.icon({
-                        iconUrl: 'https://unpkg.com/leaflet@1.9.4/dist/images/marker-icon.png',
-                        iconSize: [25, 41],
-                        iconAnchor: [12, 41],
-                        popupAnchor: [0, -41]
-                    });
-            }
+                // === 取代原本的 switch icon 區塊 ===
+                const storeName = store.name.replace(/"/g, '&quot;'); // 防止 HTML 注入
+
+                let logoSrc = '';
+                switch (store.type.toLowerCase()) {
+                    case 'carrefour':
+                    case '家樂福':
+                        logoSrc = 'src/carrefour-logo.png';
+                        break;
+                    case 'pxmart':
+                    case '全聯':
+                        logoSrc = 'src/pxmart-logo.png';
+                        break;
+                    case 'rt-mart':
+                    case '大潤發':
+                        logoSrc = 'src/rtmart-logo.png';
+                        break;
+                    case 'ssafe':
+                    case '大買家':
+                        logoSrc = 'src/ssafe-logo.png';
+                        break;
+                    default:
+                        logoSrc = 'https://unpkg.com/leaflet@1.9.4/dist/images/marker-icon.png';
+                }
+
+                const icon = L.divIcon({
+                    className: 'custom-div-icon',
+                    html: `
+                        <div style="text-align: center; line-height: 1.2;">
+                            <img src="${logoSrc}" style="width: 32px; height: 32px; display: block; margin: 0 auto;">
+                            <div style="font-size: 12px; font-weight: bold; color: #ff0000ff; white-space: nowrap; margin-top: 4px; text-shadow: 1px 1px 2px white;">
+                                ${storeName}
+                            </div>
+                        </div>
+                    `,
+                    iconSize: [100, 50],     // 寬度足夠容納文字，高度包含圖示+文字
+                    iconAnchor: [50, 50],    // 定位點在圖示+文字的中心底部
+                    popupAnchor: [0, -40]    // popup 相對位置
+                });
             const marker = L.marker([store.lat, store.lng], { icon })
                 .bindPopup(`
                     <b style="font-size: 18px; font-weight: bold;">${store.name}</b><br>
