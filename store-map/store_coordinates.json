@@ -15886,5 +15886,77 @@
     "lng": 120.6998284,
     "geocodeStatus": "success",
     "geocodeError": null
+  },
+  {
+    "name": " 全聯大安東門",
+    "address": "台北市大安區金山南路二段12號",
+    "type": "PXMart",
+    "direction": "北部",
+    "county": "台北市",
+    "district": "大安區",
+    "lat": 25.0334641,
+    "lng": 121.5270137,
+    "geocodeStatus": "success",
+    "geocodeError": null
+  },
+  {
+    "name": "全聯台中博愛店",
+    "address": "台中市南屯區博愛街80巷55號",
+    "type": "PXMart",
+    "direction": "中部",
+    "county": "台中市",
+    "district": "南屯區",
+    "lat": 24.153231,
+    "lng": 120.632816,
+    "geocodeStatus": "success",
+    "geocodeError": null
+  },
+  {
+    "name": "全聯外埔六分",
+    "address": "台中市外埔區大同村六分路297號1樓",
+    "type": "PXMart",
+    "direction": "中部",
+    "county": "台中市",
+    "district": "大甲區",
+    "lat": 24.331685,
+    "lng": 120.654305,
+    "geocodeStatus": "success",
+    "geocodeError": null
+  },
+  {
+    "name": "全聯斗六永安",
+    "address": "雲林縣斗六市永安路27號",
+    "type": "PXMart",
+    "direction": "中部",
+    "county": "雲林縣",
+    "district": "斗六市",
+    "lat": 23.710293,
+    "lng": 120.54798,
+    "geocodeStatus": "success",
+    "geocodeError": null
+  },
+  {
+    "name": "全聯林園林園北",
+    "address": "高雄市林園區林園北路495巷1號",
+    "type": "PXMart",
+    "direction": "南部",
+    "county": "高雄市",
+    "district": "林園區",
+    "lat": 22.515204,
+    "lng": 120.3947303,
+    "geocodeStatus": "success",
+    "geocodeError": null
+  },
+  {
+    "name": "全聯林園鳳林",
+    "address": "高雄市林園區鳳林路二段37號",
+    "type": "PXMart",
+    "direction": "南部",
+    "county": "高雄市",
+    "district": "林園區",
+    "lat": 22.5079063,
+    "lng": 120.3959696,
+    "geocodeStatus": "success",
+    "geocodeError": null
   }
 ]
