@@ -15888,18 +15888,6 @@
     "geocodeError": null
   },
   {
-    "name": " 全聯大安東門",
-    "address": "台北市大安區金山南路二段12號",
-    "type": "PXMart",
-    "direction": "北部",
-    "county": "台北市",
-    "district": "大安區",
-    "lat": 25.0334641,
-    "lng": 121.5270137,
-    "geocodeStatus": "success",
-    "geocodeError": null
-  },
-  {
     "name": "全聯台中博愛店",
     "address": "台中市南屯區博愛街80巷55號",
     "type": "PXMart",
@@ -15932,30 +15920,6 @@
     "district": "斗六市",
     "lat": 23.710293,
     "lng": 120.54798,
-    "geocodeStatus": "success",
-    "geocodeError": null
-  },
-  {
-    "name": "全聯林園林園北",
-    "address": "高雄市林園區林園北路495巷1號",
-    "type": "PXMart",
-    "direction": "南部",
-    "county": "高雄市",
-    "district": "林園區",
-    "lat": 22.515204,
-    "lng": 120.3947303,
-    "geocodeStatus": "success",
-    "geocodeError": null
-  },
-  {
-    "name": "全聯林園鳳林",
-    "address": "高雄市林園區鳳林路二段37號",
-    "type": "PXMart",
-    "direction": "南部",
-    "county": "高雄市",
-    "district": "林園區",
-    "lat": 22.5079063,
-    "lng": 120.3959696,
     "geocodeStatus": "success",
     "geocodeError": null
   }
