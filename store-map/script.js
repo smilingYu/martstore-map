@@ -7,6 +7,17 @@ let stores = [];
 let deferredPrompt;
 let searchMarkers = {};
 
+// LocalStorage 鍵名
+const STORAGE_KEYS = {
+    MARKER_CLUSTER: 'markerClusterEnabled',
+    FILTER_TAB: 'activeFilterTab',
+    FILTER_STORE_TYPES: 'filterStoreTypes',
+    FILTER_COUNTY: 'filterCounty',
+    FILTER_DISTRICT: 'filterDistrict',
+    MULTI_STORE_TYPES: 'multiFilterStoreTypes',
+    MULTI_SELECTIONS: 'multiFilterSelections'
+};
+
 function initMap() {
     map = L.map('map', {
         zoomControl: false,
@@ -17,7 +28,6 @@ function initMap() {
     }).addTo(map);
     map.setMaxBounds([[20, 118], [26, 124]]);
     map.addLayer(markers);
-
     locateControl = L.control.locate({
         position: 'topright',
         drawCircle: true,
@@ -50,7 +60,6 @@ function initMap() {
             console.error("無法獲取您的位置：" + err.message);
         }
     }).addTo(map);
-
     loadStores();
     locateControl.start();
 }
@@ -73,6 +82,10 @@ async function loadStores() {
         populateMultiFilterAccordion();
         displayStores(stores);
         initializeSearch();
+
+        // 資料載入完成後，恢復上次操作狀態
+        loadStateFromStorage();
+
     } catch (error) {
         console.error(error);
         alert('載入店家資料失敗，請稍後再試');
@@ -102,7 +115,6 @@ function initializeSearch() {
         currentQuery = query;
         searchResults.innerHTML = '';
         searchResults.style.display = 'none';
-
         if (query) {
             let filteredStores = stores.filter(store => store.name.toLowerCase().includes(query));
             if (filteredStores.length > 0) {
@@ -111,12 +123,10 @@ function initializeSearch() {
                     abortController.abort();
                 }
                 abortController = new AbortController();
-
                 navigator.geolocation.getCurrentPosition(
                     (position) => {
                         // 檢查是否為最新查詢
                         if (currentQuery !== query) return;
-
                         const userLat = position.coords.latitude;
                         const userLon = position.coords.longitude;
                         const storesWithDistance = filteredStores
@@ -126,7 +136,6 @@ function initializeSearch() {
                             }))
                             .sort((a, b) => a.distance - b.distance)
                             .slice(0, 10); // 限制最多 10 個結果
-
                         searchResults.style.display = 'block';
                         searchResults.innerHTML = ''; // 清空並重新填充
                         storesWithDistance.forEach(store => {
@@ -149,13 +158,11 @@ function initializeSearch() {
                     (error) => {
                         // 檢查是否為最新查詢
                         if (currentQuery !== query) return;
-
                         console.error("定位失敗:", error);
                         // 按名稱排序，無距離顯示
                         const sortedStores = filteredStores
                             .sort((a, b) => a.name.localeCompare(b.name))
                             .slice(0, 10); // 限制最多 10 個結果
-
                         searchResults.style.display = 'block';
                         searchResults.innerHTML = ''; // 清空並重新填充
                         sortedStores.forEach(store => {
@@ -172,7 +179,7 @@ function initializeSearch() {
                             searchResults.appendChild(item);
                         });
                     },
-                    { 
+                    {
                         enableHighAccuracy: true,
                         signal: abortController.signal // 支持取消
                     }
@@ -197,7 +204,7 @@ function focusOnStore(store) {
         } else {
             displayStores([store]);
             map.setView([store.lat, store.lng], 15);
-            const newMarker = (isMarkerClusterEnabled ? markers : nonClusteredMarkers).getLayers().find(m => 
+            const newMarker = (isMarkerClusterEnabled ? markers : nonClusteredMarkers).getLayers().find(m =>
                 m.getLatLng().lat === store.lat && m.getLatLng().lng === store.lng
             );
             if (newMarker) {
@@ -236,6 +243,12 @@ function populateCounties() {
     });
 }
 
+function updateCounties() {
+    populateCounties();
+    updateDistricts();
+    saveStateToStorage();  // 自動儲存
+}
+
 function updateDistricts() {
     const countySelect = document.getElementById('county');
     const districtSelect = document.getElementById('district');
@@ -255,6 +268,7 @@ function updateDistricts() {
             districtSelect.appendChild(option);
         });
     }
+    saveStateToStorage();  // 自動儲存
 }
 
 function populateMultiFilterAccordion() {
@@ -316,10 +330,12 @@ function populateMultiFilterAccordion() {
 
 function updateMultiFilterAccordion() {
     populateMultiFilterAccordion();
+    saveStateToStorage();  // 自動儲存
 }
 
 function handleCheckboxChange(event) {
     event.stopPropagation();
+    saveStateToStorage();  // 手風琴勾選變更時儲存
 }
 
 function displayStores(storesToDisplay) {
@@ -332,10 +348,9 @@ function displayStores(storesToDisplay) {
         map.removeLayer(markers);
         map.addLayer(nonClusteredMarkers);
     }
-
     storesToDisplay.forEach(store => {
         if (store.lat && store.lng) {
-                // === 取代原本的 switch icon 區塊 ===
+            // === 取代原本的 switch icon 區塊 ===
                 const storeName = store.name.replace(/"/g, '&quot;'); // 防止 HTML 注入
 
                 let logoSrc = '';
@@ -368,12 +383,12 @@ function displayStores(storesToDisplay) {
                             <div style="font-size: 12px; font-weight: bold; color: #ff0000ff; white-space: nowrap; margin-top: 4px; text-shadow: 1px 1px 2px white;">
                                 ${storeName}
                             </div>
-                        </div>
-                    `,
-                    iconSize: [100, 50],     // 寬度足夠容納文字，高度包含圖示+文字
-                    iconAnchor: [50, 50],    // 定位點在圖示+文字的中心底部
-                    popupAnchor: [0, -40]    // popup 相對位置
-                });
+                    </div>
+                `,
+                iconSize: [100, 50],     // 寬度足夠容納文字，高度包含圖示+文字
+                 iconAnchor: [50, 50],    // 定位點在圖示+文字的中心底部
+                 popupAnchor: [0, -40]    // popup 相對位置
+            });
             const marker = L.marker([store.lat, store.lng], { icon })
                 .bindPopup(`
                     <b style="font-size: 18px; font-weight: bold;">${store.name}</b><br>
@@ -409,6 +424,7 @@ function toggleMarkerCluster() {
     isMarkerClusterEnabled = document.getElementById('markerClusterSwitch').checked;
     const currentStores = getCurrentFilteredStores();
     displayStores(currentStores);
+    saveStateToStorage();  // 自動儲存
 }
 
 function getCurrentFilteredStores() {
@@ -489,6 +505,7 @@ function filterStores() {
     const offcanvasElement = document.getElementById('offcanvasNavbar');
     const bsOffcanvas = bootstrap.Offcanvas.getInstance(offcanvasElement) || new bootstrap.Offcanvas(offcanvasElement);
     bsOffcanvas.hide();
+    saveStateToStorage();  // 自動儲存
 }
 
 function resetFilters() {
@@ -497,6 +514,7 @@ function resetFilters() {
     document.getElementById('district').innerHTML = '<option value="">選擇鄉鎮市區</option>';
     populateCounties();
     displayStores(stores);
+    saveStateToStorage();  // 自動儲存
 }
 
 function filterMultiStores() {
@@ -541,6 +559,7 @@ function filterMultiStores() {
     const offcanvasElement = document.getElementById('offcanvasNavbar');
     const bsOffcanvas = bootstrap.Offcanvas.getInstance(offcanvasElement) || new bootstrap.Offcanvas(offcanvasElement);
     bsOffcanvas.hide();
+    saveStateToStorage();  // 自動儲存
 }
 
 function resetMultiFilters() {
@@ -549,6 +568,7 @@ function resetMultiFilters() {
     accordionDiv.querySelectorAll('input[type="checkbox"]').forEach(checkbox => checkbox.checked = false);
     populateMultiFilterAccordion();
     displayStores(stores);
+    saveStateToStorage();  // 自動儲存
 }
 
 function locateUser() {
@@ -589,6 +609,175 @@ function toggleFilters() {
     const bsOffcanvas = bootstrap.Offcanvas.getInstance(offcanvasElement) || new bootstrap.Offcanvas(offcanvasElement);
     bsOffcanvas.toggle();
 }
+
+// === LocalStorage 功能 ===
+
+// 儲存目前所有狀態
+function saveStateToStorage() {
+    const state = {
+        [STORAGE_KEYS.MARKER_CLUSTER]: isMarkerClusterEnabled,
+        [STORAGE_KEYS.FILTER_TAB]: document.querySelector('#filterTabs .nav-link.active')?.id || 'filter-tab',
+        [STORAGE_KEYS.FILTER_STORE_TYPES]: Array.from(document.querySelectorAll('input[name="store-type"]:checked')).map(i => i.value),
+        [STORAGE_KEYS.FILTER_COUNTY]: document.getElementById('county').value,
+        [STORAGE_KEYS.FILTER_DISTRICT]: document.getElementById('district').value,
+        [STORAGE_KEYS.MULTI_STORE_TYPES]: Array.from(document.querySelectorAll('input[name="multi-store-type"]:checked')).map(i => i.value),
+        [STORAGE_KEYS.MULTI_SELECTIONS]: getMultiFilterSelections()
+    };
+    localStorage.setItem('storeMapState', JSON.stringify(state));
+}
+
+// 取得多重篩選完整狀態
+function getMultiFilterSelections() {
+    const selections = {};
+    document.querySelectorAll('#multiFilterAccordion > .accordion-item').forEach(item => {
+        const directionBtn = item.querySelector('.accordion-button');
+        const direction = directionBtn.textContent.trim();
+        selections[direction] = { counties: {}, allCountiesChecked: false };
+
+        const countyCheckboxes = item.querySelectorAll('.county-checkbox input[type="checkbox"]');
+        const allChecked = Array.from(countyCheckboxes).every(cb => cb.checked);
+        selections[direction].allCountiesChecked = allChecked;
+
+        countyCheckboxes.forEach(cb => {
+            const county = cb.value;
+            const checked = cb.checked;
+            selections[direction].counties[county] = { checked, districts: [], allDistrictsChecked: false };
+
+            if (checked || allChecked) {
+                const districtBody = cb.closest('.accordion-item').querySelector('.checkbox-group');
+                if (districtBody) {
+                    const checkedDistricts = Array.from(districtBody.querySelectorAll('input[type="checkbox"]:checked')).map(i => i.value);
+                    const allDistricts = Array.from(districtBody.querySelectorAll('input[type="checkbox"]')).map(i => i.value);
+                    const allDistrictChecked = checkedDistricts.length === allDistricts.length && allDistricts.length > 0;
+                    selections[direction].counties[county].allDistrictsChecked = allDistrictChecked;
+                    selections[direction].counties[county].districts = allDistrictChecked ? allDistricts : checkedDistricts;
+                }
+            }
+        });
+    });
+    return selections;
+}
+
+// 從 LocalStorage 載入狀態
+function loadStateFromStorage() {
+    const saved = localStorage.getItem('storeMapState');
+    if (!saved) return;
+
+    try {
+        const state = JSON.parse(saved);
+
+        // 標記叢集
+        if (state[STORAGE_KEYS.MARKER_CLUSTER] !== undefined) {
+            isMarkerClusterEnabled = state[STORAGE_KEYS.MARKER_CLUSTER];
+            const switchEl = document.getElementById('markerClusterSwitch');
+            if (switchEl) switchEl.checked = isMarkerClusterEnabled;
+        }
+
+        // 切換分頁
+        if (state[STORAGE_KEYS.FILTER_TAB]) {
+            const tabBtn = document.getElementById(state[STORAGE_KEYS.FILTER_TAB]);
+            if (tabBtn) {
+                const bsTab = new bootstrap.Tab(tabBtn);
+                bsTab.show();
+            }
+        }
+
+        // 單一篩選
+        if (state[STORAGE_KEYS.FILTER_STORE_TYPES]) {
+            document.querySelectorAll('input[name="store-type"]').forEach(cb => {
+                cb.checked = state[STORAGE_KEYS.FILTER_STORE_TYPES].includes(cb.value);
+            });
+            populateCounties();
+            if (state[STORAGE_KEYS.FILTER_COUNTY]) {
+                const countyEl = document.getElementById('county');
+                countyEl.value = state[STORAGE_KEYS.FILTER_COUNTY];
+                updateDistricts();
+                if (state[STORAGE_KEYS.FILTER_DISTRICT]) {
+                    document.getElementById('district').value = state[STORAGE_KEYS.FILTER_DISTRICT];
+                }
+            }
+        }
+
+        // 多重篩選
+        if (state[STORAGE_KEYS.MULTI_STORE_TYPES]) {
+            document.querySelectorAll('input[name="multi-store-type"]').forEach(cb => {
+                cb.checked = state[STORAGE_KEYS.MULTI_STORE_TYPES].includes(cb.value);
+            });
+            populateMultiFilterAccordion();
+            setTimeout(() => restoreMultiFilterSelections(state[STORAGE_KEYS.MULTI_SELECTIONS]), 100);
+        }
+
+        // 最後顯示結果
+        setTimeout(() => {
+            const activeTab = document.querySelector('#filterTabs .nav-link.active').id;
+            if (activeTab === 'filter-tab') {
+                filterStores();
+            } else if (activeTab === 'multi-filter-tab') {
+                filterMultiStores();
+            } else {
+                displayStores(stores);
+            }
+        }, 200);
+
+    } catch (e) {
+        console.error("載入儲存狀態失敗", e);
+    }
+}
+
+// 恢復多重篩選勾選
+function restoreMultiFilterSelections(selections) {
+    if (!selections) return;
+    document.querySelectorAll('#multiFilterAccordion > .accordion-item').forEach(item => {
+        const directionBtn = item.querySelector('.accordion-button');
+        const direction = directionBtn.textContent.trim();
+        const dirData = selections[direction];
+        if (!dirData) return;
+
+        Object.keys(dirData.counties).forEach(county => {
+            const countyCb = item.querySelector(`.county-checkbox input[value="${county}"]`);
+            if (countyCb) {
+                const countyData = dirData.counties[county];
+                countyCb.checked = countyData.checked || dirData.allCountiesChecked;
+
+                if (countyCb.checked) {
+                    const collapseId = countyCb.closest('.accordion-header').getAttribute('id').replace('heading', 'collapse');
+                    const collapseEl = document.getElementById(collapseId);
+                    if (collapseEl) {
+                        const bsCollapse = new bootstrap.Collapse(collapseEl, { toggle: false });
+                        bsCollapse.show();
+                    }
+                }
+
+                const districtBody = countyCb.closest('.accordion-item').querySelector('.checkbox-group');
+                if (districtBody && (countyData.checked || dirData.allCountiesChecked)) {
+                    const allDistricts = Array.from(districtBody.querySelectorAll('input[type="checkbox"]'));
+                    if (countyData.allDistrictsChecked) {
+                        allDistricts.forEach(d => d.checked = true);
+                    } else {
+                        allDistricts.forEach(d => {
+                            d.checked = countyData.districts.includes(d.value);
+                        });
+                    }
+                }
+            }
+        });
+    });
+}
+
+// 清除所有儲存紀錄
+function clearSavedState() {
+    if (confirm('確定要清除所有操作紀錄？')) {
+        localStorage.removeItem('storeMapState');
+        location.reload();
+    }
+}
+
+// 分頁切換時儲存
+document.querySelectorAll('#filterTabs .nav-link').forEach(tab => {
+    tab.addEventListener('shown.bs.tab', () => {
+        saveStateToStorage();
+    });
+});
 
 document.addEventListener('DOMContentLoaded', () => {
     initMap();
