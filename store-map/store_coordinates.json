@@ -3528,7 +3528,7 @@
     "geocodeError": null
   },
   {
-    "name": "全聯斗六文化",
+    "name": "全聯斗六文化(已歇業)",
     "address": "雲林縣斗六市文化路65號",
     "type": "PXMart",
     "direction": "中部",
@@ -15920,6 +15920,30 @@
     "district": "斗六市",
     "lat": 23.710293,
     "lng": 120.54798,
+    "geocodeStatus": "success",
+    "geocodeError": null
+  },
+  {
+    "name": "全聯歸仁中正南",
+    "address": "台南市歸仁區中正南路二段123號",
+    "type": "PXMart",
+    "direction": "南部",
+    "county": "台南市",
+    "district": "歸仁區",
+    "lat": 22.922364,
+    "lng": 120.275362,
+    "geocodeStatus": "success",
+    "geocodeError": null
+  },
+  {
+    "name": "大潤發青埔店",
+    "address": "桃園市中壢區高鐵站前東路一段1號",
+    "type": "RT-Mart",
+    "direction": "北部",
+    "county": "桃園市",
+    "district": "中壢區",
+    "lat": 25.013347,
+    "lng": 121.217174,
     "geocodeStatus": "success",
     "geocodeError": null
   }
