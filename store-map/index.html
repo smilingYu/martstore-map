@@ -90,7 +90,8 @@
                                 <label><input type="checkbox" name="store-type" value="pxmart" onchange="updateCounties()" aria-label="選擇全聯"> 全聯</label><br>
                                 <label><input type="checkbox" name="store-type" value="carrefour" onchange="updateCounties()" aria-label="選擇家樂福"> 家樂福</label><br>
                                 <label><input type="checkbox" name="store-type" value="rt-mart" onchange="updateCounties()" aria-label="選擇大潤發"> 大潤發</label><br>
-                                <label><input type="checkbox" name="store-type" value="ssafe" onchange="updateCounties()" aria-label="選擇大買家"> 大買家</label>
+                                <label><input type="checkbox" name="store-type" value="ssafe" onchange="updateCounties()" aria-label="選擇大買家"> 大買家</label><br>
+                                <label><input type="checkbox" name="store-type" value="a.mart" onchange="updateCounties()" aria-label="選擇愛買"> 愛買</label>
                             </div>
                         </div>
                         <div class="filter-group mb-3">
@@ -119,7 +120,8 @@
                                 <label><input type="checkbox" name="multi-store-type" value="pxmart" onchange="updateMultiFilterAccordion()" aria-label="選擇全聯"> 全聯</label><br>
                                 <label><input type="checkbox" name="multi-store-type" value="carrefour" onchange="updateMultiFilterAccordion()" aria-label="選擇家樂福"> 家樂福</label><br>
                                 <label><input type="checkbox" name="multi-store-type" value="rt-mart" onchange="updateMultiFilterAccordion()" aria-label="選擇大潤發"> 大潤發</label><br>
-                                <label><input type="checkbox" name="multi-store-type" value="ssafe" onchange="updateMultiFilterAccordion()" aria-label="選擇大買家"> 大買家</label>
+                                <label><input type="checkbox" name="multi-store-type" value="ssafe" onchange="updateMultiFilterAccordion()" aria-label="選擇大買家"> 大買家</label><br>
+                                <label><input type="checkbox" name="multi-store-type" value="a.mart" onchange="updateMultiFilterAccordion()" aria-label="選擇愛買"> 愛買</label>
                             </div>
                         </div>
                         <div class="accordion" id="multiFilterAccordion">
@@ -190,6 +192,17 @@
                 <button class="control-btn" title="我的位置" onclick="locateUser()" aria-label="定位到我的位置">
                     <i class="bi bi-geo-alt-fill"></i>
                 </button>
+                <button class="control-btn" title="附近店家" onclick="findNearbyStores()">
+                <i class="bi bi-pin-map-fill me-1"></i> 
+                </button>
+
+                <div class="offcanvas offcanvas-bottom h-50" tabindex="-1" id="offcanvasBottom" aria-labelledby="offcanvasBottomLabel">
+                    <div class="offcanvas-header">
+                        <h5 class="offcanvas-title" id="offcanvasBottomLabel">離我最近的店家</h5>
+                        <button type="button" class="btn-close text-reset" data-bs-dismiss="offcanvas" aria-label="Close"></button>
+                    </div>
+                    <div class="offcanvas-body small p-0" id="nearbyResultsList"></div>
+                </div>
             </div>
         </div>
     </div>

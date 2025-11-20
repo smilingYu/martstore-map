@@ -1,5 +1,10 @@
 let map;
-let markers = L.markerClusterGroup();
+// 修改這裡：加入設定參數
+let markers = L.markerClusterGroup({
+    disableClusteringAtZoom: 14, // 【關鍵設定】0 (全球) 到 18 (街道細節)，當縮放層級達到 16 (或更深) 時，強制取消叢集，直接顯示個別店家，15 會更早散開（地圖範圍較大時就散開），17 則需要拉得更近才會散開。
+    spiderfyOnMaxZoom: true,     // 保持預設：如果多個店家座標完全重疊，點擊後會呈蜘蛛網狀散開
+    maxClusterRadius: 50         // (選用) 縮小叢集的半徑 (預設80)，讓標記比較容易被獨立分出來
+});
 let nonClusteredMarkers = L.layerGroup();
 let isMarkerClusterEnabled = true;
 let locateControl;
@@ -58,11 +63,13 @@ async function loadStores() {
         stores = await response.json();
 
         populateCounties();
+        // 優化：確保 DOM 渲染與資料準備好後，直接執行載入狀態，無需 setTimeout
         populateMultiFilterAccordion();
         displayStores(stores);
         initializeSearch();
 
-        setTimeout(loadStateFromStorage, 100);
+        // 直接呼叫，移除不穩定的 setTimeout
+        loadStateFromStorage(); 
     } catch (error) {
         console.error(error);
         alert('載入店家資料失敗，請稍後再試');
@@ -223,11 +230,43 @@ function populateMultiFilterAccordion() {
     let filteredStores = stores;
     if (storeTypes.length > 0) filteredStores = stores.filter(s => storeTypes.includes(s.type.toLowerCase()));
     const directions = [...new Set(filteredStores.map(s => s.direction))].sort();
-    accordionDiv.innerHTML = '';
+    
+    // 優化：使用陣列收集 HTML
+    const htmlParts = [];
     let index = 0;
+    
     for (const direction of directions) {
         const counties = [...new Set(filteredStores.filter(s => s.direction === direction).map(s => s.county))].sort();
-        accordionDiv.innerHTML += `
+        
+        // 建構內部縣市 HTML
+        const countiesHtml = counties.map(county => {
+            const districts = [...new Set(filteredStores.filter(s => s.county === county).map(s => s.district))].sort();
+            const storeCount = filteredStores.filter(s => s.county === county).length;
+            
+            const districtsHtml = districts.map(district => {
+                const districtStoreCount = filteredStores.filter(s => s.county === county && s.district === district).length;
+                return `<label><input type="checkbox" name="district-${county}" value="${district}" onchange="handleCheckboxChange(event)"> ${district} <span class="district-count">(${districtStoreCount})</span></label><br>`;
+            }).join('');
+
+            return `
+                <div class="accordion-item">
+                    <h2 class="accordion-header" id="headingCounty${index}-${counties.indexOf(county)}">
+                        <button class="accordion-button collapsed" type="button" data-bs-toggle="collapse" data-bs-target="#collapseCounty${index}-${counties.indexOf(county)}">
+                            <span class="county-checkbox"><input type="checkbox" name="county" value="${county}" onchange="handleCheckboxChange(event)"> ${county}</span>
+                            <span class="store-count">(${storeCount})</span>
+                        </button>
+                    </h2>
+                    <div id="collapseCounty${index}-${counties.indexOf(county)}" class="accordion-collapse collapse">
+                        <div class="accordion-body checkbox-group">
+                            ${districtsHtml}
+                        </div>
+                    </div>
+                </div>
+            `;
+        }).join('');
+
+        // 建構外部方向 HTML
+        htmlParts.push(`
             <div class="accordion-item">
                 <h2 class="accordion-header" id="headingDirection${index}">
                     <button class="accordion-button collapsed" type="button" data-bs-toggle="collapse" data-bs-target="#collapseDirection${index}" aria-expanded="false">
@@ -236,34 +275,16 @@ function populateMultiFilterAccordion() {
                 </h2>
                 <div id="collapseDirection${index}" class="accordion-collapse collapse">
                     <div class="accordion-body">
-                        ${counties.map(county => {
-                            const districts = [...new Set(filteredStores.filter(s => s.county === county).map(s => s.district))].sort();
-                            const storeCount = filteredStores.filter(s => s.county === county).length;
-                            return `
-                                <div class="accordion-item">
-                                    <h2 class="accordion-header" id="headingCounty${index}-${counties.indexOf(county)}">
-                                        <button class="accordion-button collapsed" type="button" data-bs-toggle="collapse" data-bs-target="#collapseCounty${index}-${counties.indexOf(county)}">
-                                            <span class="county-checkbox"><input type="checkbox" name="county" value="${county}" onchange="handleCheckboxChange(event)"> ${county}</span>
-                                            <span class="store-count">(${storeCount})</span>
-                                        </button>
-                                    </h2>
-                                    <div id="collapseCounty${index}-${counties.indexOf(county)}" class="accordion-collapse collapse">
-                                        <div class="accordion-body checkbox-group">
-                                            ${districts.map(district => {
-                                                const districtStoreCount = filteredStores.filter(s => s.county === county && s.district === district).length;
-                                                return `<label><input type="checkbox" name="district-${county}" value="${district}" onchange="handleCheckboxChange(event)"> ${district} <span class="district-count">(${districtStoreCount})</span></label><br>`;
-                                            }).join('')}
-                                        </div>
-                                    </div>
-                                </div>
-                            `;
-                        }).join('')}
+                        ${countiesHtml}
                     </div>
                 </div>
             </div>
-        `;
+        `);
         index++;
     }
+    
+    // 一次性寫入 DOM
+    accordionDiv.innerHTML = htmlParts.join('');
 }
 
 function updateMultiFilterAccordion() {
@@ -306,19 +327,21 @@ function displayStores(storesToDisplay) {
                 case 'pxmart': case '全聯': logoSrc = 'src/pxmart-logo.png'; break;
                 case 'rt-mart': case '大潤發': logoSrc = 'src/rtmart-logo.png'; break;
                 case 'ssafe': case '大買家': logoSrc = 'src/ssafe-logo.png'; break;
+                case 'a.mart': case '愛買': logoSrc = 'src/amart-logo.jpg'; break;
             }
 
+            // 在 displayStores 函式內找到 const icon = L.divIcon({ ... }) 的部分並替換
             const icon = L.divIcon({
                 className: 'custom-div-icon',
                 html: `
-                    <div style="text-align: center; line-height: 1.2;">
+                    <div style="text-align: center; line-height: 1.2; position: relative;">
                         <img src="${logoSrc}" style="width: 32px; height: 32px; display: block; margin: 0 auto;">
-                        <div style="font-size: 12px; font-weight: bold; color: #ff0000ff; white-space: nowrap; margin-top: 4px; text-shadow: 1px 1px 2px white;">
+                        <div class="marker-label">
                             ${storeName}
                         </div>
                     </div>
                 `,
-                iconSize: [100, 50],
+                iconSize: [100, 60], // 稍微加大高度以容納標籤
                 iconAnchor: [50, 50],
                 popupAnchor: [0, -40]
             });
@@ -526,6 +549,11 @@ function loadStateFromStorage() {
     try {
         const state = JSON.parse(saved);
 
+        // 簡單的資料驗證，防止舊結構導致錯誤
+        if (!state || typeof state !== 'object') {
+            throw new Error('儲存的狀態格式不正確');
+        }
+
         if (state.t) {
             const tab = document.getElementById(state.t);
             if (tab) new bootstrap.Tab(tab).show();
@@ -537,23 +565,25 @@ function loadStateFromStorage() {
             if (sw) sw.checked = isMarkerClusterEnabled;
         }
 
-        if (state.s) {
+        if (state.s && Array.isArray(state.s)) {
             document.querySelectorAll('input[name="store-type"]').forEach(cb => cb.checked = state.s.includes(cb.value));
             populateCounties();
         }
 
-        if (state.m) {
+        if (state.m && Array.isArray(state.m)) {
             document.querySelectorAll('input[name="multi-store-type"]').forEach(cb => cb.checked = state.m.includes(cb.value));
             populateMultiFilterAccordion();
         }
 
-        setTimeout(() => {
-            if (state.f) {
+        // 使用 requestAnimationFrame 確保 UI 渲染後再執行勾選，比 setTimeout 更穩定
+        requestAnimationFrame(() => {
+            if (state.f && Array.isArray(state.f)) {
                 state.f.forEach(key => {
                     const [county, district] = key.split('|');
                     const countyCb = document.querySelector(`.county-checkbox input[value="${county}"]`);
                     if (countyCb) {
                         countyCb.checked = true;
+                        // 自動展開邏輯保持不變
                         const collapseId = countyCb.closest('.accordion-header').getAttribute('data-bs-target');
                         if (collapseId) {
                             const collapseEl = document.querySelector(collapseId);
@@ -567,18 +597,21 @@ function loadStateFromStorage() {
                 });
             }
 
-            const activeTab = document.querySelector('#filterTabs .nav-link.active').id;
+            const activeTab = document.querySelector('#filterTabs .nav-link.active')?.id;
             if (activeTab === 'filter-tab') filterStores();
             else if (activeTab === 'multi-filter-tab') filterMultiStores();
             else displayStores(stores);
 
-            if (state.v) {
+            if (state.v && state.v.lat && state.v.lng) {
                 map.setView([parseFloat(state.v.lat), parseFloat(state.v.lng)], state.v.z, { animate: false });
             }
-        }, 400);
+        });
 
     } catch (e) {
-        console.error("載入狀態失敗", e);
+        console.error("載入狀態失敗，可能是資料過期或結構變更，將自動清除舊紀錄。", e);
+        localStorage.removeItem(STORAGE_KEY);
+        // 選擇性：重整頁面或重置過濾器
+        // location.reload(); 
     }
 }
 
@@ -588,6 +621,102 @@ function clearSavedState() {
         location.reload();
     }
 }
+
+// 新增：尋找附近店家功能
+function findNearbyStores() {
+    const resultList = document.getElementById('nearbyResultsList');
+    const offcanvas = new bootstrap.Offcanvas(document.getElementById('offcanvasBottom'));
+    
+    resultList.innerHTML = '<div class="text-center p-3"><div class="spinner-border text-primary" role="status"></div><div class="mt-2">正在定位中...</div></div>';
+    offcanvas.show();
+
+    if (!navigator.geolocation) {
+        resultList.innerHTML = '<div class="alert alert-danger">您的瀏覽器不支援地理定位功能。</div>';
+        return;
+    }
+
+    navigator.geolocation.getCurrentPosition(
+        (position) => {
+            const userLat = position.coords.latitude;
+            const userLon = position.coords.longitude;
+
+            // 計算所有店家的距離
+            const storesWithDist = stores.map(store => ({
+                ...store,
+                distance: calculateDistance(userLat, userLon, store.lat, store.lng)
+            }))
+            .sort((a, b) => a.distance - b.distance)
+            .slice(0, 20); // 只取最近的 20 間
+
+            renderNearbyList(storesWithDist, offcanvas);
+            
+            // 移動地圖到使用者位置
+            map.setView([userLat, userLon], 16); // Zoom 拉近一點比較清楚
+            
+            // 若有定位控制項，更新藍點 (確保藍點與列表位置一致)
+            if(locateControl) locateControl.start();
+        },
+        (error) => {
+            console.error("定位失敗:", error.message);
+            let errorMsg = "無法獲取您的位置。";
+            if (error.code === 1) errorMsg = "請允許瀏覽器存取您的位置。";
+            else if (error.code === 3) errorMsg = "定位逾時，請走到戶外或空曠處再試。";
+            
+            resultList.innerHTML = `<div class="alert alert-danger">${errorMsg}<br><small>建議：檢查手機定位是否開啟，或稍後再試。</small></div>`;
+        },
+        { 
+            enableHighAccuracy: true, // 盡量精準
+            timeout: 15000,           // 等待時間延長至 15 秒 (原本 5 秒太短)
+            maximumAge: 30000         // 接受 30 秒內的快取位置 (這是解決問題的關鍵)
+        }
+    );
+}
+
+function renderNearbyList(storesList, offcanvasInstance) {
+    const resultList = document.getElementById('nearbyResultsList');
+    if (storesList.length === 0) {
+        resultList.innerHTML = '<div class="p-3">附近沒有找到店家。</div>';
+        return;
+    }
+
+    let html = '<div class="list-group list-group-flush">';
+    storesList.forEach(store => {
+        html += `
+            <a href="#" class="list-group-item list-group-item-action" onclick="focusOnNearbyStore('${store.name}', ${store.lat}, ${store.lng})">
+                <div class="d-flex w-100 justify-content-between">
+                    <h6 class="mb-1 fw-bold">${store.name}</h6>
+                    <small class="text-primary fw-bold">${store.distance.toFixed(2)} km</small>
+                </div>
+                <small class="text-muted">${store.address}</small>
+            </a>
+        `;
+    });
+    html += '</div>';
+    resultList.innerHTML = html;
+}
+
+function focusOnNearbyStore(name, lat, lng) {
+    // 關閉底部面板
+    const offcanvasEl = document.getElementById('offcanvasBottom');
+    const offcanvasInstance = bootstrap.Offcanvas.getInstance(offcanvasEl);
+    if (offcanvasInstance) offcanvasInstance.hide();
+
+    // 移動地圖
+    map.setView([lat, lng], 16);
+    
+    // 開啟 Popup
+    const marker = searchMarkers[name];
+    if (marker) {
+        // 如果是在 cluster 內，需要先展開 cluster (Leaflet.markercluster 會自動處理 zoom)
+        if (isMarkerClusterEnabled) {
+            markers.zoomToShowLayer(marker, () => marker.openPopup());
+        } else {
+            marker.openPopup();
+        }
+    }
+}
+
+
 
 document.querySelectorAll('#filterTabs .nav-link').forEach(tab => {
     tab.addEventListener('shown.bs.tab', debounceSave);
