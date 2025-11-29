@@ -56,23 +56,40 @@ window.addEventListener('beforeinstallprompt', (e) => {
     if (btn) btn.style.display = 'block';
 });
 
+// 假設 stores 是一個全域變數，用來儲存所有店家的資料
+// var stores = []; 
+
 async function loadStores() {
     try {
-        const response = await fetch('store_coordinates.json');
-        if (!response.ok) throw new Error('無法載入店家資料');
-        stores = await response.json();
+        // 1. 同時發起兩個檔案的請求
+        const [coordinatesResponse, milkResponse] = await Promise.all([
+            fetch('store_coordinates.json'),
+            fetch('store_milk.json') // 新增載入 store_milk.json
+        ]);
 
+        // 2. 檢查兩個請求是否都成功
+        if (!coordinatesResponse.ok) throw new Error('無法載入主要店家座標資料 (store_coordinates.json)');
+        if (!milkResponse.ok) throw new Error('無法載入奶粉店家資料 (store_milk.json)');
+
+        // 3. 解析 JSON 資料
+        const coordinatesData = await coordinatesResponse.json();
+        const milkData = await milkResponse.json();
+
+        // 4. 合併資料
+        // 假設兩個 JSON 檔案都是陣列 (Array)，直接串接即可
+        // 注意：請確保您的 JSON 檔案結構是相同的，這樣後續邏輯才能正確運作。
+        stores = coordinatesData.concat(milkData);
+
+        // 5. 執行初始化和渲染
         populateCounties();
-        // 優化：確保 DOM 渲染與資料準備好後，直接執行載入狀態，無需 setTimeout
         populateMultiFilterAccordion();
-        displayStores(stores);
+        displayStores(stores); // 使用合併後的資料
         initializeSearch();
 
-        // 直接呼叫，移除不穩定的 setTimeout
         loadStateFromStorage(); 
     } catch (error) {
-        console.error(error);
-        alert('載入店家資料失敗，請稍後再試');
+        console.error("載入店家資料失敗:", error);
+        alert('載入店家資料失敗，請檢查網路連線或檔案路徑。');
     }
 }
 
@@ -328,6 +345,20 @@ function displayStores(storesToDisplay) {
                 case 'rt-mart': case '大潤發': logoSrc = 'src/rtmart-logo.png'; break;
                 case 'ssafe': case '大買家': logoSrc = 'src/ssafe-logo.png'; break;
                 case 'a.mart': case '愛買': logoSrc = 'src/amart-logo.jpg'; break;
+                case 'greattree': case '大樹': logoSrc = 'src/greattree-logo.jpg'; break;
+                case 'littlechef': case '小當家': logoSrc = 'src/littlechef-logo.png'; break;
+                case 'hongan': case '弘安': logoSrc = 'src/hongan-logo.png'; break;
+                case 'chengguang': case '正光': logoSrc = 'src/chengguang-logo.jpg'; break;
+                case 'global': case '全球': logoSrc = 'src/global-logo.jpg'; break;
+                case 'mingyuan': case '名媛': logoSrc = 'src/mingyuan-logo.jpg'; break;
+                case 'yierle': case '宜兒樂': logoSrc = 'src/yierle-logo.jpg'; break;
+                case 'imei': case '易美': logoSrc = 'src/imei-logo.jpg'; break;
+                case 'hipp': case '喜寶': logoSrc = 'src/hipp-logo.jpg'; break;
+                case 'mamahow': case '媽媽好': logoSrc = 'src/mamahow-logo.jpg'; break;
+                case 'naughty': case '頑皮寶貝': logoSrc = 'src/naughty-logo.jpg'; break;
+                case 'leerwu': case '樂兒屋': logoSrc = 'src/leerwu-logo.png'; break;
+                case 'love': case '樂芙': logoSrc = 'src/love-logo.jpg'; break;
+                case 'poly': case '寶齡': logoSrc = 'src/poly-logo.jpg'; break;
             }
 
             // 在 displayStores 函式內找到 const icon = L.divIcon({ ... }) 的部分並替換
