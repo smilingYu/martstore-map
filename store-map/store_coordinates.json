@@ -16234,5 +16234,53 @@
     "lng": 121.373782,
     "geocodeStatus": "success",
     "geocodeError": null
+  },
+  {
+    "name": "全聯大村大仁",
+    "address": "彰化縣大村鄉大仁路二段32號",
+    "type": "PXMart",
+    "direction": "中部",
+    "county": "彰化縣",
+    "district": "大村鄉",
+    "lat": 23.993783,
+    "lng": 120.543169,
+    "geocodeStatus": "success",
+    "geocodeError": null
+  },
+  {
+    "name": "全聯鹿草國中",
+    "address": "嘉義縣鹿草鄉鹿草路121號",
+    "type": "PXMart",
+    "direction": "中部",
+    "county": "嘉義縣",
+    "district": "鹿草鄉",
+    "lat": 23.408974,
+    "lng": 120.312158,
+    "geocodeStatus": "success",
+    "geocodeError": null
+  },
+  {
+    "name": "全聯淡水義山",
+    "address": "新北市淡水區義山路二段301號",
+    "type": "PXMart",
+    "direction": "北部",
+    "county": "新北市",
+    "district": "淡水區",
+    "lat": 25.198512,
+    "lng": 121.438638,
+    "geocodeStatus": "success",
+    "geocodeError": null
+  },
+  {
+    "name": "全聯歸仁中正南",
+    "address": "台南市歸仁區中正南路二段123號",
+    "type": "PXMart",
+    "direction": "南部",
+    "county": "台南市",
+    "district": "歸仁區",
+    "lat": 22.922365,
+    "lng": 120.275239,
+    "geocodeStatus": "success",
+    "geocodeError": null
   }
 ]
