@@ -387,4 +387,501 @@ body {
         padding: 5px 6px;
     }
 }
-*\
+
+/* ===== 區域選擇器樣式 ===== */
+
+/* Modal 容器 */
+.region-selector-container {
+    display: flex;
+    height: 500px;
+    max-height: 70vh;
+}
+
+/* 面板標題 */
+.panel-header {
+    padding: 12px 16px;
+    background-color: #e9ecef;
+    border-bottom: 2px solid #dee2e6;
+    font-weight: 600;
+    font-size: 14px;
+    color: #495057;
+    text-align: center;
+    position: sticky;
+    top: 0;
+    z-index: 1;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    gap: 8px;
+    cursor: default;
+}
+
+.panel-header .collapse-icon {
+    display: none;
+    font-size: 16px;
+    transition: transform 0.3s ease;
+}
+
+/* 第一欄：區域面板 */
+.direction-panel {
+    flex: 1;
+    min-width: 0;
+    background-color: #f8f9fa;
+    border-right: 1px solid #dee2e6;
+    display: flex;
+    flex-direction: column;
+}
+
+.direction-list {
+    flex: 1;
+    overflow-y: auto;
+    display: flex;
+    flex-direction: column;
+}
+
+.direction-item {
+    padding: 15px 12px;
+    cursor: pointer;
+    border-bottom: 1px solid #e9ecef;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    transition: background-color 0.2s;
+}
+
+.direction-item:hover {
+    background-color: #e9ecef;
+}
+
+.direction-item.active {
+    background-color: #fff;
+    border-right: 3px solid #0d6efd;
+    font-weight: 600;
+    color: #0d6efd;
+}
+
+.direction-item i {
+    color: #adb5bd;
+    font-size: 14px;
+}
+
+/* 第二欄：縣市面板 */
+.county-panel {
+    flex: 1;
+    min-width: 0;
+    background-color: #fff;
+    border-right: 1px solid #dee2e6;
+    display: flex;
+    flex-direction: column;
+}
+
+.county-list {
+    flex: 1;
+    overflow-y: auto;
+    padding: 8px;
+}
+
+.county-item {
+    padding: 12px 16px;
+    border-bottom: 1px solid #e9ecef;
+    cursor: pointer;
+    transition: all 0.2s;
+    display: flex;
+    align-items: center;
+    gap: 10px;
+}
+
+.county-item:hover {
+    background-color: #f8f9fa;
+}
+
+.county-item.active {
+    background-color: #e7f1ff;
+    border-left: 3px solid #0d6efd;
+    font-weight: 600;
+    color: #0d6efd;
+}
+
+.county-item.has-selection {
+    background-color: #f0f8ff;
+}
+
+.county-name {
+    flex: 1;
+    font-size: 14px;
+    color: #212529;
+}
+
+.store-count {
+    color: #6c757d;
+    font-size: 12px;
+    white-space: nowrap;
+}
+
+.selected-badge {
+    background-color: #0d6efd;
+    color: white;
+    padding: 2px 8px;
+    border-radius: 12px;
+    font-size: 11px;
+    font-weight: 600;
+}
+
+/* 第三欄：鄉鎮市區面板 */
+.district-panel {
+    flex: 1;
+    min-width: 0;
+    background-color: #fff;
+    display: flex;
+    flex-direction: column;
+}
+
+.district-list-panel {
+    flex: 1;
+    overflow-y: auto;
+    padding: 8px;
+}
+
+.district-item {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding: 10px 12px;
+    border-bottom: 1px solid #f0f0f0;
+    cursor: pointer;
+    transition: all 0.2s;
+}
+
+.district-item:hover {
+    background-color: #f8f9fa;
+}
+
+.district-item input[type="checkbox"] {
+    width: 16px;
+    height: 16px;
+    min-width: 16px;
+    cursor: pointer;
+    flex-shrink: 0;
+}
+
+.district-item label {
+    flex: 1;
+    cursor: pointer;
+    margin: 0;
+    font-size: 14px;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+}
+
+.district-count {
+    color: #6c757d;
+    font-size: 12px;
+    white-space: nowrap;
+}
+
+/* 已選擇標籤顯示 */
+.selected-tags-display {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+    padding: 12px;
+    background-color: #f8f9fa;
+    border-radius: 8px;
+    min-height: 60px;
+    max-height: 150px;
+    overflow-y: auto;
+}
+
+.region-tag {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    padding: 6px 12px;
+    background-color: #e7f1ff;
+    color: #0d6efd;
+    border-radius: 16px;
+    font-size: 13px;
+    font-weight: 500;
+    white-space: nowrap;
+}
+
+.region-tag i {
+    cursor: pointer;
+    font-size: 16px;
+    opacity: 0.7;
+    transition: opacity 0.2s;
+}
+
+.region-tag i:hover {
+    opacity: 1;
+}
+
+/* 主頁面的已選擇標籤容器 */
+.selected-tags-container {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+    padding: 12px;
+    background-color: #f8f9fa;
+    border-radius: 8px;
+    margin-bottom: 16px;
+}
+
+.selected-tag {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    padding: 6px 12px;
+    background-color: #0d6efd;
+    color: white;
+    border-radius: 16px;
+    font-size: 13px;
+    font-weight: 500;
+}
+
+.selected-tag i {
+    cursor: pointer;
+    font-size: 14px;
+    opacity: 0.8;
+    transition: opacity 0.2s;
+}
+
+.selected-tag i:hover {
+    opacity: 1;
+}
+
+/* 摘要區域 */
+.selected-summary {
+    width: 100%;
+}
+
+/* 響應式設計 */
+@media (max-width: 768px) {
+    /* Modal 對話框調整 */
+    .modal-dialog {
+        margin: 0.5rem;
+        max-width: calc(100% - 1rem);
+    }
+    
+    .modal-content {
+        max-height: calc(100vh - 1rem);
+    }
+    
+    /* 區域選擇器容器 - 改為垂直堆疊 */
+    .region-selector-container {
+        flex-direction: column;
+        height: auto;
+        max-height: 60vh;
+        min-height: 400px;
+    }
+    
+    /* 面板標題 */
+    .panel-header {
+        padding: 12px 16px;
+        font-size: 14px;
+        position: relative;
+    }
+    
+    /* 所有面板 - 移除固定高度，允許自動擴展 */
+    .direction-panel,
+    .county-panel,
+    .district-panel {
+        flex: none;
+        min-width: 100%;
+        border-right: none;
+        border-bottom: 1px solid #dee2e6;
+        max-height: none;
+    }
+    
+    /* 面板標題在行動裝置上可點擊 */
+    .panel-header {
+        cursor: pointer;
+        user-select: none;
+    }
+    
+    .panel-header .collapse-icon {
+        display: inline-block;
+    }
+    
+    /* 列表容器 - 預設收合 */
+    .direction-list,
+    .county-list,
+    .district-list-panel {
+        max-height: 0;
+        overflow: hidden;
+        transition: max-height 0.3s ease;
+    }
+    
+    /* 展開狀態 */
+    .direction-panel.expanded .direction-list,
+    .county-panel.expanded .county-list,
+    .district-panel.expanded .district-list-panel {
+        max-height: 250px;
+        overflow-y: auto;
+    }
+    
+    /* 展開時旋轉圖示 */
+    .direction-panel.expanded .collapse-icon,
+    .county-panel.expanded .collapse-icon,
+    .district-panel.expanded .collapse-icon {
+        transform: rotate(180deg);
+    }
+    
+    /* 區域項目 - 增大觸控目標 */
+    .direction-item {
+        padding: 16px 20px;
+        font-size: 15px;
+        min-height: 52px;
+    }
+    
+    /* 縣市項目 - 增大觸控區域 */
+    .county-item {
+        padding: 16px 20px;
+        min-height: 52px;
+        font-size: 15px;
+    }
+    
+    /* 鄉鎮市區項目 - 增大觸控目標 */
+    .district-item {
+        padding: 14px 20px;
+        min-height: 50px;
+    }
+    
+    .district-item input[type="checkbox"] {
+        width: 20px;
+        height: 20px;
+        min-width: 20px;
+        min-height: 20px;
+    }
+    
+    .district-item label {
+        font-size: 15px;
+    }
+    
+    /* 移除活動狀態的左側邊框，改用背景色 */
+    .county-item.active {
+        border-left: none;
+        background-color: #d0e7ff;
+    }
+    
+    .direction-item.active {
+        border-right: none;
+        background-color: #d0e7ff;
+    }
+    
+    /* Modal Footer 調整 - 縮小以節省空間 */
+    .modal-footer {
+        padding: 8px;
+    }
+    
+    /* 已選擇區域摘要 - 縮小高度 */
+    .selected-summary {
+        margin-bottom: 8px;
+    }
+    
+    .selected-summary .d-flex {
+        margin-bottom: 6px;
+    }
+    
+    .selected-summary #selectedRegionCount {
+        font-size: 13px;
+    }
+    
+    .selected-summary .btn-sm {
+        padding: 4px 8px;
+        font-size: 12px;
+    }
+    
+    /* 已選擇標籤顯示區域 - 大幅縮小 */
+    .selected-tags-display {
+        min-height: 40px;
+        max-height: 80px;
+        padding: 8px;
+        gap: 6px;
+    }
+    
+    /* 區域標籤 - 縮小尺寸 */
+    .region-tag {
+        padding: 6px 10px;
+        font-size: 12px;
+        border-radius: 14px;
+        min-height: 28px;
+    }
+    
+    .region-tag i {
+        font-size: 14px;
+    }
+    
+    /* 底部按鈕 - 縮小高度 */
+    .modal-footer .btn {
+        padding: 10px 16px;
+        font-size: 14px;
+        min-height: 40px;
+        font-weight: 500;
+    }
+    
+    /* 主頁面的已選擇標籤 */
+    .selected-tags-container {
+        padding: 12px;
+        gap: 8px;
+        margin-bottom: 12px;
+    }
+    
+    .selected-tag {
+        padding: 10px 14px;
+        font-size: 14px;
+        min-height: 36px;
+    }
+}
+
+/* 超小屏幕優化 (手機豎屏) */
+@media (max-width: 480px) {
+    .region-selector-container {
+        height: 50vh;
+        min-height: 300px;
+    }
+    
+    .panel-header {
+        padding: 8px 10px;
+        font-size: 12px;
+    }
+    
+    .direction-item {
+        padding: 12px 8px;
+        font-size: 13px;
+    }
+    
+    .county-item {
+        padding: 12px 10px;
+        font-size: 13px;
+    }
+    
+    .district-item {
+        padding: 10px 8px;
+    }
+    
+    .district-item label {
+        font-size: 13px;
+    }
+}
+
+/* 滾動條美化 */
+.direction-panel::-webkit-scrollbar,
+.county-panel::-webkit-scrollbar,
+.selected-tags-display::-webkit-scrollbar {
+    width: 6px;
+}
+
+.direction-panel::-webkit-scrollbar-thumb,
+.county-panel::-webkit-scrollbar-thumb,
+.selected-tags-display::-webkit-scrollbar-thumb {
+    background-color: #cbd5e0;
+    border-radius: 3px;
+}
+
+.direction-panel::-webkit-scrollbar-thumb:hover,
+.county-panel::-webkit-scrollbar-thumb:hover,
+.selected-tags-display::-webkit-scrollbar-thumb:hover {
+    background-color: #a0aec0;
+}

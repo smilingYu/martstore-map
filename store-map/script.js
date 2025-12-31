@@ -12,10 +12,58 @@ let stores = [];
 let deferredPrompt;
 let searchMarkers = {};
 
-// LocalStorage
+// LocalStorage 與 Cookie 備援
 const STORAGE_KEY = 'storeMapState';
 let lastSavedState = '';
 let saveTimeout;
+let storageAvailable = true;
+
+// 檢查 localStorage 是否可用
+function checkStorageAvailable() {
+    try {
+        const test = '__storage_test__';
+        localStorage.setItem(test, test);
+        localStorage.removeItem(test);
+        return true;
+    } catch (e) {
+        console.warn('LocalStorage 不可用，將使用 Cookie 作為備援');
+        return false;
+    }
+}
+
+// Cookie 操作函數
+function setCookie(name, value, days = 30) {
+    try {
+        const expires = new Date();
+        expires.setTime(expires.getTime() + days * 24 * 60 * 60 * 1000);
+        // 壓縮數據
+        const compressed = btoa(encodeURIComponent(value));
+        document.cookie = `${name}=${compressed};expires=${expires.toUTCString()};path=/;SameSite=Lax`;
+        return true;
+    } catch (e) {
+        console.error('Cookie 設置失敗:', e);
+        return false;
+    }
+}
+
+function getCookie(name) {
+    try {
+        const nameEQ = name + '=';
+        const ca = document.cookie.split(';');
+        for (let i = 0; i < ca.length; i++) {
+            let c = ca[i];
+            while (c.charAt(0) === ' ') c = c.substring(1, c.length);
+            if (c.indexOf(nameEQ) === 0) {
+                const compressed = c.substring(nameEQ.length, c.length);
+                return decodeURIComponent(atob(compressed));
+            }
+        }
+        return null;
+    } catch (e) {
+        console.error('Cookie 讀取失敗:', e);
+        return null;
+    }
+}
 
 function debounceSave() {
     clearTimeout(saveTimeout);
@@ -83,9 +131,12 @@ async function loadStores() {
         // 5. 執行初始化和渲染
         populateCounties();
         populateMultiFilterAccordion();
-        displayStores(stores); // 使用合併後的資料
+        // displayStores(stores); // 預設不顯示所有店家標記
         initializeSearch();
 
+        // 設定初始化完成旗標，讓使用者第一次篩選時就能自動調整視角
+        window.hasInitialized = true;
+        
         loadStateFromStorage(); 
     } catch (error) {
         console.error("載入店家資料失敗:", error);
@@ -119,6 +170,13 @@ function initializeSearch() {
         if (query) {
             let filteredStores = stores.filter(store => store.name.toLowerCase().includes(query));
             if (filteredStores.length > 0) {
+                // 先立即顯示結果（按名稱排序）
+                const initialStores = filteredStores
+                    .sort((a, b) => a.name.localeCompare(b.name))
+                    .slice(0, 10);
+                renderSearchResults(initialStores);
+                
+                // 然後在背景嘗試獲取位置並更新排序
                 if (abortController) abortController.abort();
                 abortController = new AbortController();
                 navigator.geolocation.getCurrentPosition(
@@ -126,6 +184,7 @@ function initializeSearch() {
                         if (currentQuery !== query) return;
                         const userLat = position.coords.latitude;
                         const userLon = position.coords.longitude;
+                        // 只對已過濾的店家計算距離
                         const storesWithDistance = filteredStores
                             .map(store => ({ ...store, distance: calculateDistance(userLat, userLon, store.lat, store.lng) }))
                             .sort((a, b) => a.distance - b.distance)
@@ -133,11 +192,14 @@ function initializeSearch() {
                         renderSearchResults(storesWithDistance);
                     },
                     (error) => {
-                        if (currentQuery !== query) return;
-                        const sortedStores = filteredStores.sort((a, b) => a.name.localeCompare(b.name)).slice(0, 10);
-                        renderSearchResults(sortedStores);
+                        // 定位失敗時不需要做任何事，因為已經顯示了初始結果
                     },
-                    { enableHighAccuracy: true, signal: abortController.signal }
+                    { 
+                        enableHighAccuracy: false, // 改為 false 加快速度
+                        timeout: 3000, // 3秒超時
+                        maximumAge: 10000, // 接受 10 秒內的快取位置
+                        signal: abortController.signal 
+                    }
                 );
             }
         }
@@ -241,67 +303,392 @@ function updateDistricts() {
     debounceSave();
 }
 
+// 全域變數儲存當前選擇的區域資料
+let currentRegionSelection = {
+    direction: '',
+    county: '',
+    districts: new Set()
+};
+
 function populateMultiFilterAccordion() {
-    const accordionDiv = document.getElementById('multiFilterAccordion');
     const storeTypes = Array.from(document.querySelectorAll('input[name="multi-store-type"]:checked')).map(i => i.value);
     let filteredStores = stores;
     if (storeTypes.length > 0) filteredStores = stores.filter(s => storeTypes.includes(s.type.toLowerCase()));
+    
+    // 建立區域選擇器的資料結構
+    window.regionData = {};
     const directions = [...new Set(filteredStores.map(s => s.direction))].sort();
     
-    // 優化：使用陣列收集 HTML
-    const htmlParts = [];
-    let index = 0;
-    
-    for (const direction of directions) {
+    directions.forEach(direction => {
         const counties = [...new Set(filteredStores.filter(s => s.direction === direction).map(s => s.county))].sort();
+        window.regionData[direction] = {};
         
-        // 建構內部縣市 HTML
-        const countiesHtml = counties.map(county => {
+        counties.forEach(county => {
             const districts = [...new Set(filteredStores.filter(s => s.county === county).map(s => s.district))].sort();
             const storeCount = filteredStores.filter(s => s.county === county).length;
+            window.regionData[direction][county] = {
+                districts: districts,
+                count: storeCount,
+                districtCounts: {}
+            };
             
-            const districtsHtml = districts.map(district => {
-                const districtStoreCount = filteredStores.filter(s => s.county === county && s.district === district).length;
-                return `<label><input type="checkbox" name="district-${county}" value="${district}" onchange="handleCheckboxChange(event)"> ${district} <span class="district-count">(${districtStoreCount})</span></label><br>`;
-            }).join('');
+            districts.forEach(district => {
+                const districtCount = filteredStores.filter(s => s.county === county && s.district === district).length;
+                window.regionData[direction][county].districtCounts[district] = districtCount;
+            });
+        });
+    });
+}
 
-            return `
-                <div class="accordion-item">
-                    <h2 class="accordion-header" id="headingCounty${index}-${counties.indexOf(county)}">
-                        <button class="accordion-button collapsed" type="button" data-bs-toggle="collapse" data-bs-target="#collapseCounty${index}-${counties.indexOf(county)}">
-                            <span class="county-checkbox"><input type="checkbox" name="county" value="${county}" onchange="handleCheckboxChange(event)"> ${county}</span>
-                            <span class="store-count">(${storeCount})</span>
-                        </button>
-                    </h2>
-                    <div id="collapseCounty${index}-${counties.indexOf(county)}" class="accordion-collapse collapse">
-                        <div class="accordion-body checkbox-group">
-                            ${districtsHtml}
-                        </div>
-                    </div>
-                </div>
-            `;
-        }).join('');
-
-        // 建構外部方向 HTML
-        htmlParts.push(`
-            <div class="accordion-item">
-                <h2 class="accordion-header" id="headingDirection${index}">
-                    <button class="accordion-button collapsed" type="button" data-bs-toggle="collapse" data-bs-target="#collapseDirection${index}" aria-expanded="false">
-                        ${direction}
-                    </button>
-                </h2>
-                <div id="collapseDirection${index}" class="accordion-collapse collapse">
-                    <div class="accordion-body">
-                        ${countiesHtml}
-                    </div>
-                </div>
-            </div>
-        `);
-        index++;
+function openRegionSelector() {
+    const modal = document.getElementById('regionSelectorModal');
+    if (!modal) {
+        console.error('找不到區域選擇器 Modal');
+        return;
     }
     
-    // 一次性寫入 DOM
-    accordionDiv.innerHTML = htmlParts.join('');
+    // 初始化三欄
+    populateDirectionList();
+    
+    // 清空第三欄
+    const districtListPanel = document.getElementById('districtList');
+    if (districtListPanel) {
+        districtListPanel.innerHTML = '<div style="padding: 20px; text-align: center; color: #999;">請先選擇縣市</div>';
+    }
+    
+    // 在行動裝置上，預設展開第一個面板（區域）
+    if (window.innerWidth <= 768) {
+        const directionPanel = document.querySelector('.direction-panel');
+        if (directionPanel) {
+            directionPanel.classList.add('expanded');
+        }
+    }
+    
+    // 顯示 Modal
+    const bsModal = new bootstrap.Modal(modal);
+    bsModal.show();
+}
+
+// 行動裝置面板展開/收合功能
+function togglePanel(panelType) {
+    // 只在行動裝置上啟用摺疊功能
+    if (window.innerWidth > 768) {
+        return;
+    }
+    
+    const panel = document.querySelector(`[data-panel="${panelType}"]`);
+    if (!panel) return;
+    
+    const isExpanded = panel.classList.contains('expanded');
+    
+    if (isExpanded) {
+        // 收合當前面板
+        panel.classList.remove('expanded');
+    } else {
+        // 收合其他面板，展開當前面板
+        document.querySelectorAll('.direction-panel, .county-panel, .district-panel').forEach(p => {
+            p.classList.remove('expanded');
+        });
+        panel.classList.add('expanded');
+    }
+}
+
+function populateDirectionList() {
+    const directionList = document.getElementById('directionList');
+    if (!directionList || !window.regionData) return;
+    
+    const directions = Object.keys(window.regionData);
+    let html = '';
+    
+    directions.forEach((direction, index) => {
+        const isActive = index === 0 ? 'active' : '';
+        html += `
+            <div class="direction-item ${isActive}" onclick="selectDirection(event, '${direction}')">
+                <span>${direction}</span>
+                <i class="bi bi-chevron-right"></i>
+            </div>
+        `;
+    });
+    
+    directionList.innerHTML = html;
+    
+    // 預設選擇第一個區域
+    if (directions.length > 0) {
+        selectDirection(null, directions[0]);
+    }
+}
+
+function selectDirection(event, direction) {
+    // 更新左側選中狀態
+    document.querySelectorAll('.direction-item').forEach(item => {
+        item.classList.remove('active');
+    });
+    if (event) {
+        event.target.closest('.direction-item').classList.add('active');
+    } else {
+        // 如果沒有 event (初始化時)，直接選中第一個
+        const firstItem = document.querySelector('.direction-item');
+        if (firstItem) firstItem.classList.add('active');
+    }
+    
+    currentRegionSelection.direction = direction;
+    
+    // 更新右側縣市列表
+    populateCountyList(direction);
+}
+
+function populateCountyList(direction) {
+    const countyList = document.getElementById('countyList');
+    if (!countyList || !window.regionData[direction]) return;
+    
+    const counties = Object.keys(window.regionData[direction]);
+    let html = '';
+    
+    counties.forEach(county => {
+        const data = window.regionData[direction][county];
+        const selectedCount = getSelectedCountInCounty(county);
+        const hasSelection = selectedCount > 0;
+        
+        html += `
+            <div class="county-item ${hasSelection ? 'has-selection' : ''}" onclick="selectCounty(event, '${county}')" data-county="${county}">
+                <span class="county-name">${county}</span>
+                <span class="store-count">${data.count} 家</span>
+                ${hasSelection ? `<span class="selected-badge">${selectedCount}</span>` : ''}
+            </div>
+        `;
+    });
+    
+    countyList.innerHTML = html || '<div style="padding: 20px; text-align: center; color: #999;">請先選擇區域</div>';
+}
+
+function selectCounty(event, county) {
+    // 更新縣市選中狀態
+    document.querySelectorAll('.county-item').forEach(item => {
+        item.classList.remove('active');
+    });
+    event.currentTarget.classList.add('active');
+    
+    currentRegionSelection.county = county;
+    
+    // 更新右側鄉鎮市區列表
+    populateDistrictList(currentRegionSelection.direction, county);
+}
+
+function populateDistrictList(direction, county) {
+    const districtListPanel = document.getElementById('districtList');
+    if (!districtListPanel || !window.regionData[direction] || !window.regionData[direction][county]) {
+        if (districtListPanel) {
+            districtListPanel.innerHTML = '<div style="padding: 20px; text-align: center; color: #999;">請先選擇縣市</div>';
+        }
+        return;
+    }
+    
+    const data = window.regionData[direction][county];
+    let html = '';
+    
+    data.districts.forEach(district => {
+        const isChecked = selectedRegions.has(county) && selectedRegions.get(county).has(district);
+        html += `
+            <div class="district-item">
+                <input type="checkbox" 
+                       class="district-checkbox"
+                       data-county="${county}" 
+                       data-district="${district}"
+                       ${isChecked ? 'checked' : ''}
+                       onchange="handleDistrictCheckbox(event, '${county}', '${district}')">
+                <label onclick="event.preventDefault(); event.currentTarget.previousElementSibling.click();">
+                    <span>${district}</span>
+                    <span class="district-count">${data.districtCounts[district]} 家</span>
+                </label>
+            </div>
+        `;
+    });
+    
+    districtListPanel.innerHTML = html;
+}
+
+function handleDistrictCheckbox(event, county, district) {
+    const checkbox = event.target;
+    
+    if (checkbox.checked) {
+        addSelection(county, district);
+    } else {
+        removeSelection(county, district);
+    }
+    
+    // 更新已選擇標籤
+    updateSelectedTags();
+    
+    // 更新縣市列表中的已選數量徽章
+    updateCountyBadge(county);
+}
+
+function updateCountyBadge(county) {
+    const countyItem = document.querySelector(`.county-item[data-county="${county}"]`);
+    if (!countyItem) return;
+    
+    const selectedCount = getSelectedCountInCounty(county);
+    
+    // 移除舊徽章
+    const oldBadge = countyItem.querySelector('.selected-badge');
+    if (oldBadge) oldBadge.remove();
+    
+    // 更新狀態
+    if (selectedCount > 0) {
+        countyItem.classList.add('has-selection');
+        const badge = document.createElement('span');
+        badge.className = 'selected-badge';
+        badge.textContent = selectedCount;
+        countyItem.appendChild(badge);
+    } else {
+        countyItem.classList.remove('has-selection');
+    }
+}
+
+// 選擇管理
+let selectedRegions = new Map(); // Map<county, Set<district>>
+
+function addSelection(county, district) {
+    if (!selectedRegions.has(county)) {
+        selectedRegions.set(county, new Set());
+    }
+    selectedRegions.get(county).add(district);
+}
+
+function removeSelection(county, district) {
+    if (selectedRegions.has(county)) {
+        selectedRegions.get(county).delete(district);
+        if (selectedRegions.get(county).size === 0) {
+            selectedRegions.delete(county);
+        }
+    }
+}
+
+function getSelectedCountInCounty(county) {
+    return selectedRegions.has(county) ? selectedRegions.get(county).size : 0;
+}
+
+function restoreSelectionState() {
+    selectedRegions.forEach((districts, county) => {
+        // 更新縣市徽章
+        updateCountyBadge(county);
+        
+        // 如果當前選中的縣市，更新鄉鎮市區的勾選狀態
+        if (currentRegionSelection.county === county) {
+            districts.forEach(district => {
+                const checkbox = document.querySelector(`.district-checkbox[data-county="${county}"][data-district="${district}"]`);
+                if (checkbox) checkbox.checked = true;
+            });
+        }
+    });
+}
+
+function updateSelectedTags() {
+    const container = document.getElementById('selectedRegionTags');
+    const countDisplay = document.getElementById('selectedRegionCount');
+    if (!container) return;
+    
+    let html = '';
+    let totalCount = 0;
+    
+    selectedRegions.forEach((districts, county) => {
+        districts.forEach(district => {
+            totalCount++;
+            html += `
+                <span class="region-tag">
+                    ${county} ${district}
+                    <i class="bi bi-x" onclick="removeTagSelection('${county}', '${district}')"></i>
+                </span>
+            `;
+        });
+    });
+    
+    container.innerHTML = html;
+    
+    if (countDisplay) {
+        countDisplay.textContent = `已選擇: ${totalCount}`;
+    }
+    
+    // 如果沒有選擇，顯示提示
+    if (totalCount === 0) {
+        container.innerHTML = '<span class="text-muted">尚未選擇任何區域</span>';
+    }
+}
+
+function removeTagSelection(county, district) {
+    removeSelection(county, district);
+    
+    // 更新 UI
+    const checkbox = document.querySelector(`.district-checkbox[data-county="${county}"][data-district="${district}"]`);
+    if (checkbox) {
+        checkbox.checked = false;
+        updateCountyCheckboxState(county);
+    }
+    
+    updateSelectedTags();
+}
+
+function confirmRegionSelection() {
+    // 更新頁面上的已選擇標籤顯示
+    updateMainSelectedTags();
+    
+    // 關閉 Modal
+    const modal = bootstrap.Modal.getInstance(document.getElementById('regionSelectorModal'));
+    if (modal) modal.hide();
+    
+    // 執行篩選
+    filterMultiStores();
+}
+
+function updateMainSelectedTags() {
+    const container = document.getElementById('mainSelectedTags');
+    if (!container) return;
+    
+    let html = '';
+    
+    selectedRegions.forEach((districts, county) => {
+        districts.forEach(district => {
+            html += `
+                <span class="selected-tag">
+                    ${county} ${district}
+                    <i class="bi bi-x-circle" onclick="removeMainTagSelection('${county}', '${district}')"></i>
+                </span>
+            `;
+        });
+    });
+    
+    if (html === '') {
+        container.innerHTML = '';
+        container.style.display = 'none';
+    } else {
+        container.innerHTML = html;
+        container.style.display = 'flex';
+    }
+}
+
+function removeMainTagSelection(county, district) {
+    removeSelection(county, district);
+    updateMainSelectedTags();
+    filterMultiStores();
+}
+
+function clearAllRegionSelections() {
+    selectedRegions.clear();
+    
+    // 清除所有縣市的徽章
+    document.querySelectorAll('.county-item').forEach(item => {
+        item.classList.remove('has-selection');
+        const badge = item.querySelector('.selected-badge');
+        if (badge) badge.remove();
+    });
+    
+    // 清除第三欄所有的複選框
+    document.querySelectorAll('.district-checkbox').forEach(checkbox => {
+        checkbox.checked = false;
+    });
+    
+    // 更新 Modal 底部的已選擇標籤顯示
+    updateSelectedTags();
 }
 
 function updateMultiFilterAccordion() {
@@ -311,14 +698,8 @@ function updateMultiFilterAccordion() {
 
 function handleCheckboxChange(event) {
     event.stopPropagation();
-    const input = event.target;
-    if (input.closest('.county-checkbox')) {
-        const collapseId = input.closest('.accordion-header').getAttribute('data-bs-target');
-        if (input.checked && collapseId) {
-            const collapseEl = document.querySelector(collapseId);
-            if (collapseEl) new bootstrap.Collapse(collapseEl, { toggle: false }).show();
-        }
-    }
+    // 只阻止事件冒泡，不自動展開手風琴
+    // 使用者需要點擊右側箭頭按鈕才能展開/收合手風琴
     debounceSave();
 }
 
@@ -414,7 +795,25 @@ function displayStores(storesToDisplay) {
 
 function toggleMarkerCluster() {
     isMarkerClusterEnabled = document.getElementById('markerClusterSwitch').checked;
-    displayStores(getCurrentFilteredStores());
+    
+    // 取得目前已顯示的標記
+    const currentLayers = isMarkerClusterEnabled ? nonClusteredMarkers.getLayers() : markers.getLayers();
+    
+    // 如果沒有任何標記在地圖上,就不需要重新顯示
+    if (currentLayers.length === 0) {
+        debounceSave();
+        return;
+    }
+    
+    // 只切換叢集模式,保持目前的篩選結果
+    const currentStores = [];
+    currentLayers.forEach(marker => {
+        const latlng = marker.getLatLng();
+        const store = stores.find(s => s.lat === latlng.lat && s.lng === latlng.lng);
+        if (store) currentStores.push(store);
+    });
+    
+    displayStores(currentStores);
     debounceSave();
 }
 
@@ -425,55 +824,20 @@ function filterMultiStoresLogic() {
         filteredStores = filteredStores.filter(s => storeTypes.includes(s.type.toLowerCase()));
     }
 
-    const finalSelected = new Set();
-
-    // 1. 鄉鎮勾選（優先）
-    document.querySelectorAll('#multiFilterAccordion .checkbox-group input[type="checkbox"]:checked').forEach(cb => {
-        const countyInput = cb.closest('.accordion-item').querySelector('.county-checkbox input');
-        if (countyInput) {
-            finalSelected.add(`${countyInput.value}|${cb.value}`);
-        }
-    });
-
-    // 2. 縣市勾選（補足未被鄉鎮覆蓋的鄉鎮）
-    document.querySelectorAll('#multiFilterAccordion .county-checkbox input[type="checkbox"]:checked').forEach(countyCb => {
-        const county = countyCb.value;
-        const allDistricts = [...new Set(filteredStores.filter(s => s.county === county).map(s => s.district))];
-        allDistricts.forEach(d => {
-            const key = `${county}|${d}`;
-            if (!finalSelected.has(key)) {
-                finalSelected.add(key);
-            }
-        });
-    });
-
-    // 3. 整方向全選
-    document.querySelectorAll('#multiFilterAccordion > .accordion-item').forEach(item => {
-        const direction = item.querySelector('.accordion-button').textContent.trim();
-        const countyCbs = item.querySelectorAll('.county-checkbox input[type="checkbox"]');
-        const allChecked = Array.from(countyCbs).every(cb => cb.checked);
-        if (allChecked && countyCbs.length > 0) {
-            filteredStores.filter(s => s.direction === direction).forEach(s => {
-                const key = `${s.county}|${s.district}`;
-                if (!finalSelected.has(key)) {
-                    finalSelected.add(key);
-                }
-            });
-        }
-    });
-
-    const selectedArray = Array.from(finalSelected).map(k => {
-        const [c, d] = k.split('|');
-        return { county: c, district: d };
-    });
-
-    if (selectedArray.length > 0) {
-        filteredStores = filteredStores.filter(store =>
-            selectedArray.some(item => item.county === store.county && item.district === store.district)
-        );
+    // 使用新的選擇器資料
+    if (selectedRegions.size === 0) {
+        return []; // 沒有選擇任何區域時返回空陣列
     }
 
-    return filteredStores;
+    const filtered = filteredStores.filter(store => {
+        if (selectedRegions.has(store.county)) {
+            const districts = selectedRegions.get(store.county);
+            return districts.has(store.district);
+        }
+        return false;
+    });
+
+    return filtered;
 }
 
 function getCurrentFilteredStores() {
@@ -510,15 +874,24 @@ function resetFilters() {
     document.getElementById('county').value = '';
     document.getElementById('district').innerHTML = '<option value="">選擇鄉鎮市區</option>';
     populateCounties();
-    displayStores(stores);
+    // 重置後清空地圖標記
+    markers.clearLayers();
+    nonClusteredMarkers.clearLayers();
+    map.setView([23.5, 121], 8);
     debounceSave();
 }
 
 function resetMultiFilters() {
     document.querySelectorAll('input[name="multi-store-type"]').forEach(cb => cb.checked = false);
-    document.querySelectorAll('#multiFilterAccordion input[type="checkbox"]').forEach(cb => cb.checked = false);
-    populateMultiFilterAccordion();
-    displayStores(stores);
+    
+    // 清除區域選擇
+    selectedRegions.clear();
+    updateMainSelectedTags();
+    
+    // 重置後清空地圖標記
+    markers.clearLayers();
+    nonClusteredMarkers.clearLayers();
+    map.setView([23.5, 121], 8);
     debounceSave();
 }
 
@@ -541,41 +914,86 @@ function toggleFilters() {
 // === LocalStorage 儲存與載入 ===
 
 function saveStateToStorage() {
-    const selected = [];
-    document.querySelectorAll('#multiFilterAccordion .checkbox-group input:checked').forEach(cb => {
-        const county = cb.closest('.accordion-item').querySelector('.county-checkbox input').value;
-        selected.push(`${county}|${cb.value}`);
-    });
-    document.querySelectorAll('#multiFilterAccordion .county-checkbox input[type="checkbox"]:checked').forEach(cb => {
-        const county = cb.value;
-        const hasSpecificDistrict = Array.from(cb.closest('.accordion-item').querySelectorAll('.checkbox-group input:checked')).length > 0;
-        if (!hasSpecificDistrict) {
-            selected.push(`${county}|*`);
-        }
-    });
+    try {
+        // 轉換 selectedRegions Map 為可序列化的格式
+        const selectedRegionsArray = [];
+        selectedRegions.forEach((districts, county) => {
+            districts.forEach(district => {
+                selectedRegionsArray.push(`${county}|${district}`);
+            });
+        });
 
-    const currentState = JSON.stringify({
-        t: document.querySelector('#filterTabs .nav-link.active')?.id || 'filter-tab',
-        c: isMarkerClusterEnabled,
-        s: Array.from(document.querySelectorAll('input[name="store-type"]:checked')).map(i => i.value),
-        m: Array.from(document.querySelectorAll('input[name="multi-store-type"]:checked')).map(i => i.value),
-        f: selected,
-        v: {
-            lat: map.getCenter().lat.toFixed(6),
-            lng: map.getCenter().lng.toFixed(6),
-            z: map.getZoom()
-        }
-    });
+        const currentState = JSON.stringify({
+            t: document.querySelector('#filterTabs .nav-link.active')?.id || 'filter-tab',
+            c: isMarkerClusterEnabled,
+            s: Array.from(document.querySelectorAll('input[name="store-type"]:checked')).map(i => i.value),
+            county: document.getElementById('county')?.value || '',
+            district: document.getElementById('district')?.value || '',
+            m: Array.from(document.querySelectorAll('input[name="multi-store-type"]:checked')).map(i => i.value),
+            f: selectedRegionsArray,
+            v: {
+                lat: map.getCenter().lat.toFixed(6),
+                lng: map.getCenter().lng.toFixed(6),
+                z: map.getZoom()
+            },
+            timestamp: Date.now()
+        });
 
-    if (currentState !== lastSavedState) {
-        localStorage.setItem(STORAGE_KEY, currentState);
-        lastSavedState = currentState;
+        if (currentState !== lastSavedState) {
+            let saved = false;
+            
+            // 嘗試使用 localStorage
+            if (storageAvailable) {
+                try {
+                    localStorage.setItem(STORAGE_KEY, currentState);
+                    saved = true;
+                } catch (e) {
+                    console.warn('LocalStorage 儲存失敗，切換到 Cookie:', e);
+                    storageAvailable = false;
+                }
+            }
+            
+            // 如果 localStorage 失敗，使用 Cookie
+            if (!saved) {
+                saved = setCookie(STORAGE_KEY, currentState);
+            }
+            
+            if (saved) {
+                lastSavedState = currentState;
+            } else {
+                console.error('所有儲存方式都失敗');
+            }
+        }
+    } catch (error) {
+        console.error('儲存狀態時發生錯誤:', error);
     }
 }
 
 function loadStateFromStorage() {
-    const saved = localStorage.getItem(STORAGE_KEY);
-    if (!saved) return;
+    // 初始化時檢查儲存可用性
+    storageAvailable = checkStorageAvailable();
+    
+    // 嘗試從 localStorage 或 Cookie 載入
+    let saved = null;
+    
+    if (storageAvailable) {
+        try {
+            saved = localStorage.getItem(STORAGE_KEY);
+        } catch (e) {
+            console.warn('LocalStorage 讀取失敗，嘗試從 Cookie 讀取:', e);
+            storageAvailable = false;
+        }
+    }
+    
+    // 如果 localStorage 失敗或不可用，嘗試從 Cookie 讀取
+    if (!saved) {
+        saved = getCookie(STORAGE_KEY);
+    }
+    
+    if (!saved) {
+        console.log('沒有找到儲存的狀態');
+        return;
+    }
 
     try {
         const state = JSON.parse(saved);
@@ -599,6 +1017,25 @@ function loadStateFromStorage() {
         if (state.s && Array.isArray(state.s)) {
             document.querySelectorAll('input[name="store-type"]').forEach(cb => cb.checked = state.s.includes(cb.value));
             populateCounties();
+            
+            // 還原單一篩選的縣市和鄉鎮市區
+            if (state.county) {
+                const countySelect = document.getElementById('county');
+                if (countySelect) {
+                    countySelect.value = state.county;
+                    updateDistricts();
+                    
+                    if (state.district) {
+                        // 使用 requestAnimationFrame 確保 district 選單已更新
+                        requestAnimationFrame(() => {
+                            const districtSelect = document.getElementById('district');
+                            if (districtSelect) {
+                                districtSelect.value = state.district;
+                            }
+                        });
+                    }
+                }
+            }
         }
 
         if (state.m && Array.isArray(state.m)) {
@@ -606,32 +1043,23 @@ function loadStateFromStorage() {
             populateMultiFilterAccordion();
         }
 
-        // 使用 requestAnimationFrame 確保 UI 渲染後再執行勾選，比 setTimeout 更穩定
-        requestAnimationFrame(() => {
-            if (state.f && Array.isArray(state.f)) {
-                state.f.forEach(key => {
-                    const [county, district] = key.split('|');
-                    const countyCb = document.querySelector(`.county-checkbox input[value="${county}"]`);
-                    if (countyCb) {
-                        countyCb.checked = true;
-                        // 自動展開邏輯保持不變
-                        const collapseId = countyCb.closest('.accordion-header').getAttribute('data-bs-target');
-                        if (collapseId) {
-                            const collapseEl = document.querySelector(collapseId);
-                            if (collapseEl) new bootstrap.Collapse(collapseEl, { toggle: false }).show();
-                        }
-                        if (district !== '*') {
-                            const districtCb = document.querySelector(`input[name="district-${county}"][value="${district}"]`);
-                            if (districtCb) districtCb.checked = true;
-                        }
-                    }
-                });
-            }
+        // 還原區域選擇器的資料
+        if (state.f && Array.isArray(state.f)) {
+            selectedRegions.clear();
+            state.f.forEach(key => {
+                const [county, district] = key.split('|');
+                if (county && district) {
+                    addSelection(county, district);
+                }
+            });
+            updateMainSelectedTags();
+        }
 
+        // 使用 requestAnimationFrame 確保 UI 渲染後再執行
+        requestAnimationFrame(() => {
             const activeTab = document.querySelector('#filterTabs .nav-link.active')?.id;
             if (activeTab === 'filter-tab') filterStores();
             else if (activeTab === 'multi-filter-tab') filterMultiStores();
-            else displayStores(stores);
 
             if (state.v && state.v.lat && state.v.lng) {
                 map.setView([parseFloat(state.v.lat), parseFloat(state.v.lng)], state.v.z, { animate: false });
@@ -648,7 +1076,20 @@ function loadStateFromStorage() {
 
 function clearSavedState() {
     if (confirm('確定要清除所有操作紀錄？')) {
-        localStorage.removeItem(STORAGE_KEY);
+        // 清除 localStorage
+        try {
+            localStorage.removeItem(STORAGE_KEY);
+        } catch (e) {
+            console.warn('LocalStorage 清除失敗:', e);
+        }
+        
+        // 清除 Cookie
+        try {
+            document.cookie = `${STORAGE_KEY}=;expires=Thu, 01 Jan 1970 00:00:00 GMT;path=/`;
+        } catch (e) {
+            console.warn('Cookie 清除失敗:', e);
+        }
+        
         location.reload();
     }
 }

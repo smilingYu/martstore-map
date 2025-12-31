@@ -298,8 +298,18 @@
                                 </div>
                             </div>
                             </div>
-                        <div class="accordion" id="multiFilterAccordion">
-                            </div>
+                        
+                        <!-- 區域選擇按鈕 -->
+                        <div class="filter-group mb-3">
+                            <label class="form-label fw-bold">篩選區域</label>
+                            <button type="button" class="btn btn-outline-primary w-100" onclick="openRegionSelector()">
+                                <i class="bi bi-geo-alt"></i> 選擇區域
+                            </button>
+                        </div>
+
+                        <!-- 已選擇的區域標籤顯示 -->
+                        <div id="mainSelectedTags" class="selected-tags-container" style="display: none;"></div>
+
                         <div class="button-group mt-3">
                             <button type="button" class="btn btn-outline-secondary btn-fixed-size me-2" onclick="resetMultiFilters()">重置</button>
                             <button type="button" class="btn btn-primary btn-fixed-size" onclick="filterMultiStores()">篩選</button>
@@ -371,6 +381,74 @@
                         <button type="button" class="btn-close text-reset" data-bs-dismiss="offcanvas" aria-label="Close"></button>
                     </div>
                     <div class="offcanvas-body small p-0" id="nearbyResultsList"></div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- 區域選擇器 Modal -->
+    <div class="modal fade" id="regionSelectorModal" tabindex="-1" aria-hidden="true">
+        <div class="modal-dialog modal-dialog-centered modal-lg">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title">地區類別選擇</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                </div>
+                <div class="modal-body p-0">
+                    <div class="region-selector-container">
+                        <!-- 第一欄: 區域列表 -->
+                        <div class="direction-panel" data-panel="direction">
+                            <div class="panel-header" onclick="togglePanel('direction')">
+                                <span>區域</span>
+                                <i class="bi bi-chevron-down collapse-icon"></i>
+                            </div>
+                            <div id="directionList" class="direction-list">
+                                <!-- 由 JavaScript 動態生成 -->
+                            </div>
+                        </div>
+                        
+                        <!-- 第二欄: 縣市列表 -->
+                        <div class="county-panel" data-panel="county">
+                            <div class="panel-header" onclick="togglePanel('county')">
+                                <span>縣市</span>
+                                <i class="bi bi-chevron-down collapse-icon"></i>
+                            </div>
+                            <div id="countyList" class="county-list">
+                                <!-- 由 JavaScript 動態生成 -->
+                            </div>
+                        </div>
+                        
+                        <!-- 第三欄: 鄉鎮市區列表 -->
+                        <div class="district-panel" data-panel="district">
+                            <div class="panel-header" onclick="togglePanel('district')">
+                                <span>鄉鎮市區</span>
+                                <i class="bi bi-chevron-down collapse-icon"></i>
+                            </div>
+                            <div id="districtList" class="district-list-panel">
+                                <!-- 由 JavaScript 動態生成 -->
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                <div class="modal-footer flex-column align-items-stretch">
+                    <!-- 已選擇標籤區域 -->
+                    <div class="selected-summary mb-2">
+                        <div class="d-flex justify-content-between align-items-center mb-2">
+                            <span id="selectedRegionCount" class="fw-bold">已選擇: </span>
+                            <button type="button" class="btn btn-sm btn-outline-danger" onclick="clearAllRegionSelections()">
+                                清除全部
+                            </button>
+                        </div>
+                        <div id="selectedRegionTags" class="selected-tags-display">
+                            <span class="text-muted">尚未選擇任何區域</span>
+                        </div>
+                    </div>
+                    
+                    <!-- 按鈕 -->
+                    <div class="d-flex gap-2">
+                        <button type="button" class="btn btn-secondary flex-fill" data-bs-dismiss="modal">取消</button>
+                        <button type="button" class="btn btn-primary flex-fill" onclick="confirmRegionSelection()">確定</button>
+                    </div>
                 </div>
             </div>
         </div>
