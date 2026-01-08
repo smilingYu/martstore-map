@@ -16282,5 +16282,17 @@
     "lng": 120.275239,
     "geocodeStatus": "success",
     "geocodeError": null
+  },
+  {
+    "name": "全聯基隆福五",
+    "address": "基隆市七堵區百七街72號",
+    "type": "PXMart",
+    "direction": "北部",
+    "county": "基隆市",
+    "district": "七堵區",
+    "lat": 25.086945,
+    "lng": 121.697645,
+    "geocodeStatus": "success",
+    "geocodeError": null
   }
 ]
