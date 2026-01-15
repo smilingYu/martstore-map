@@ -16294,5 +16294,17 @@
     "lng": 121.697645,
     "geocodeStatus": "success",
     "geocodeError": null
+  },
+  {
+    "name": "全聯台中文山",
+    "address": "台中市南屯區文山三街358號",
+    "type": "PXMart",
+    "direction": "中部",
+    "county": "台中市",
+    "district": "南屯區",
+    "lat": 24.146885,
+    "lng": 120.608121,
+    "geocodeStatus": "success",
+    "geocodeError": null
   }
 ]

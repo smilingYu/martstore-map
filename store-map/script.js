@@ -740,6 +740,7 @@ function displayStores(storesToDisplay) {
                 case 'leerwu': case '樂兒屋': logoSrc = 'src/leerwu-logo.png'; break;
                 case 'love': case '樂芙': logoSrc = 'src/love-logo.jpg'; break;
                 case 'poly': case '寶齡': logoSrc = 'src/poly-logo.jpg'; break;
+                case 'norbelbaby': case '丁丁藥局': logoSrc = 'src/norbelbaby-logo.png'; break;
             }
 
             // 在 displayStores 函式內找到 const icon = L.divIcon({ ... }) 的部分並替換
