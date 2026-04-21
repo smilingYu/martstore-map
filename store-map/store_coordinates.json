@@ -16306,5 +16306,17 @@
     "lng": 120.608121,
     "geocodeStatus": "success",
     "geocodeError": null
+  },
+  {
+    "name": "全聯伸港中興",
+    "address": "彰化縣伸港鄉中興路二段168號",
+    "type": "PXMart",
+    "direction": "中部",
+    "county": "彰化縣",
+    "district": "伸港鄉",
+    "lat": 24.157752,
+    "lng": 120.486559,
+    "geocodeStatus": "success",
+    "geocodeError": null
   }
 ]
