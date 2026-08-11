@@ -741,6 +741,10 @@ function displayStores(storesToDisplay) {
                 case 'love': case '樂芙': logoSrc = 'src/love-logo.jpg'; break;
                 case 'poly': case '寶齡': logoSrc = 'src/poly-logo.jpg'; break;
                 case 'norbelbaby': case '丁丁藥局': logoSrc = 'src/norbelbaby-logo.png'; break;
+                case 'jiahe': case '佳賀洋行': logoSrc = 'src/jiahe-logo.jpg'; break;
+                case '9city': case '洋酒城': logoSrc = 'src/9city-logo.png'; break;
+                case 'my9': case '買酒網': logoSrc = 'src/my9-logo.jpg'; break;
+                case 'drinks': case '橡木桶洋酒': logoSrc = 'src/drinks-logo.png'; break;
             }
 
             // 在 displayStores 函式內找到 const icon = L.divIcon({ ... }) 的部分並替換
